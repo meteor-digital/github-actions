@@ -1,0 +1,47 @@
+name: 'Activate Release'
+description: 'Activates the new release with atomic symlink switching and Sentry integration'
+
+inputs:
+  host:
+    description: 'Target host'
+    required: true
+  ssh_port:
+    description: 'SSH port'
+    required: true
+  ssh_user:
+    description: 'SSH username'
+    required: true
+  deploy_path:
+    description: 'Deployment path'
+    required: true
+  deploy_date:
+    description: 'Deployment date identifier'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Activate new release
+      shell: bash
+      run: |
+        echo "🔄 Activating new release..."
+        
+        HOST="${{ inputs.host }}"
+        SSH_PORT="${{ inputs.ssh_port }}"
+        SSH_USER="${{ inputs.ssh_user }}"
+        DEPLOY_PATH="${{ inputs.deploy_path }}"
+        DEPLOY_DATE="${{ inputs.deploy_date }}"
+        
+        # Link the new release to the current version (LensOnline pattern)
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          [ -d $DEPLOY_PATH/current ]
+          && unlink $DEPLOY_PATH/current
+          || exit 0"
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          ln -s $DEPLOY_PATH/releases/$DEPLOY_DATE/ $DEPLOY_PATH/current"
+        
+        # Set Sentry release (LensOnline pattern)
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          sed -i --in-place --follow-symlinks
+          \"s/SENTRY_RELEASE=.*/SENTRY_RELEASE='release-$DEPLOY_DATE'/g\"
+          $DEPLOY_PATH/current/.env.local"

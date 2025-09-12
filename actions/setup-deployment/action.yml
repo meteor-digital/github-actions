@@ -1,0 +1,50 @@
+name: 'Setup Deployment'
+description: 'Sets up SSH and prepares deployment environment'
+
+inputs:
+  host:
+    description: 'Target host'
+    required: true
+  ssh_port:
+    description: 'SSH port'
+    required: true
+  ssh_private_key:
+    description: 'SSH private key'
+    required: true
+
+outputs:
+  deploy_date:
+    description: 'Deployment date/time identifier'
+    value: ${{ steps.vars.outputs.deploy_date }}
+  release_dir:
+    description: 'Release directory name'
+    value: ${{ steps.vars.outputs.release_dir }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set deployment variables
+      id: vars
+      shell: bash
+      run: |
+        # Format date and set as output (matching LensOnline pattern)
+        DEPLOY_DATE=$(date +'%Y%m%d.%H%M')
+        echo "deploy_date=$DEPLOY_DATE" >> $GITHUB_OUTPUT
+        
+        # Set release directory path
+        RELEASE_DIR="releases/$DEPLOY_DATE"
+        echo "release_dir=$RELEASE_DIR" >> $GITHUB_OUTPUT
+
+    - name: Setup SSH known_hosts
+      shell: bash
+      run: |
+        echo "🔐 Setting up SSH known_hosts..."
+        mkdir -p ~/.ssh
+        ssh-keyscan -p ${{ inputs.ssh_port }} ${{ inputs.host }} >> ~/.ssh/known_hosts
+        chmod 700 ~/.ssh
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Configure SSH for direct commands
+      uses: webfactory/ssh-agent@v0.9.1
+      with:
+        ssh-private-key: ${{ inputs.ssh_private_key }}

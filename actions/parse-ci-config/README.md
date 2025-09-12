@@ -54,7 +54,7 @@ build:
 ```yaml
 - name: Read configuration
   id: config
-  uses: ./actions/read-config
+  uses: ./actions/parse-ci-config
   with:
     config_file: '.github/ci-config.yml'
 

@@ -42,7 +42,7 @@ runs:
 
     - name: Read configuration
       id: config
-      uses: ../read-config
+      uses: ../parse-ci-config
       with:
         config_file: ${{ inputs.config_file }}
         

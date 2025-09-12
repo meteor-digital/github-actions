@@ -1,0 +1,95 @@
+name: 'Manage Services'
+description: 'Manages services (stop/start) based on project type and hosting provider'
+
+inputs:
+  action:
+    description: 'Action to perform (stop, restart)'
+    required: true
+  host:
+    description: 'Target host'
+    required: true
+  ssh_port:
+    description: 'SSH port'
+    required: true
+  ssh_user:
+    description: 'SSH username'
+    required: true
+  project_type:
+    description: 'Project type (shopware, laravel, symfony)'
+    required: true
+  provider:
+    description: 'Hosting provider'
+    required: true
+  php_service:
+    description: 'PHP service name'
+    required: true
+  messenger_worker_id:
+    description: 'Messenger worker ID (for Shopware/Symfony)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Manage services
+      shell: bash
+      run: |
+        echo "🔄 Managing services..."
+        
+        HOST="${{ inputs.host }}"
+        SSH_PORT="${{ inputs.ssh_port }}"
+        SSH_USER="${{ inputs.ssh_user }}"
+        ACTION="${{ inputs.action }}"
+        PROJECT_TYPE="${{ inputs.project_type }}"
+        PROVIDER="${{ inputs.provider }}"
+        PHP_SERVICE="${{ inputs.php_service }}"
+        MESSENGER_WORKER_ID="${{ inputs.messenger_worker_id }}"
+        
+        case "$ACTION" in
+          'stop')
+            echo "⏹️  Stopping services..."
+            ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+              case '$PROJECT_TYPE' in
+                'shopware'|'symfony')
+                  echo 'Stopping Symfony/Shopware messenger workers...'
+                  if [ -n '$MESSENGER_WORKER_ID' ]; then
+                    systemctl --user stop worker-$MESSENGER_WORKER_ID.service || echo 'Failed to stop worker service'
+                  else
+                    pkill -f 'messenger:consume' || echo 'No messenger workers running'
+                  fi
+                  ;;
+                'laravel')
+                  echo 'Stopping Laravel queue workers...'
+                  pkill -f 'queue:work' || echo 'No queue workers running'
+                  ;;
+              esac
+            "
+            ;;
+          'restart')
+            echo "🔄 Restarting services for provider: $PROVIDER"
+            ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+              case '$PROVIDER' in
+                'byte')
+                  hypernode-servicectl restart $PHP_SERVICE
+                  ;;
+                'hipex')
+                  hipex restart:phpfpm $PHP_SERVICE
+                  ;;
+                'hostedpower')
+                  tscli opcache clear
+                  ;;
+                'level27')
+                  sudo /usr/sbin/service $PHP_SERVICE reload
+                  # Start messenger again for Shopware/Symfony
+                  if [ '$PROJECT_TYPE' = 'shopware' ] || [ '$PROJECT_TYPE' = 'symfony' ]; then
+                    if [ -n '$MESSENGER_WORKER_ID' ]; then
+                      systemctl --user start worker-$MESSENGER_WORKER_ID.service || echo 'Failed to start worker service'
+                    fi
+                  fi
+                  ;;
+                'generic'|*)
+                  sudo systemctl reload $PHP_SERVICE
+                  ;;
+              esac
+            "
+            ;;
+        esac

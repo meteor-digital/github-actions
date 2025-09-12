@@ -1,0 +1,62 @@
+name: 'Run Commands on Host'
+description: 'Runs a list of commands on the remote host'
+
+inputs:
+  host:
+    description: 'Target host'
+    required: true
+  ssh_port:
+    description: 'SSH port'
+    required: true
+  ssh_user:
+    description: 'SSH username'
+    required: true
+  working_directory:
+    description: 'Working directory for commands'
+    required: true
+  commands:
+    description: 'Commands to run (newline separated)'
+    required: true
+  description:
+    description: 'Description for logging'
+    required: false
+    default: 'commands'
+  fail_on_error:
+    description: 'Whether to fail on command error'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run commands
+      shell: bash
+      run: |
+        echo "⚙️  Running ${{ inputs.description }}..."
+        
+        HOST="${{ inputs.host }}"
+        SSH_PORT="${{ inputs.ssh_port }}"
+        SSH_USER="${{ inputs.ssh_user }}"
+        WORKING_DIR="${{ inputs.working_directory }}"
+        COMMANDS="${{ inputs.commands }}"
+        FAIL_ON_ERROR="${{ inputs.fail_on_error }}"
+        
+        if [ -n "$COMMANDS" ]; then
+          ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+            cd '$WORKING_DIR'
+            while IFS= read -r command; do
+              if [ -n \"\$command\" ]; then
+                echo \"Executing: \$command\"
+                if [ '$FAIL_ON_ERROR' = 'true' ]; then
+                  eval \"\$command\"
+                else
+                  eval \"\$command\" || echo \"Command failed but continuing: \$command\"
+                fi
+              fi
+            done << 'EOF'
+        $COMMANDS
+        EOF
+          "
+        else
+          echo "💡 No ${{ inputs.description }} to run"
+        fi

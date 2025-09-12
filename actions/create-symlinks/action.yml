@@ -1,0 +1,54 @@
+name: 'Create Symlinks'
+description: 'Creates symlinks for shared folders following LensOnline patterns'
+
+inputs:
+  host:
+    description: 'Target host'
+    required: true
+  ssh_port:
+    description: 'SSH port'
+    required: true
+  ssh_user:
+    description: 'SSH username'
+    required: true
+  deploy_path:
+    description: 'Deployment path'
+    required: true
+  release_dir:
+    description: 'Release directory'
+    required: true
+  shared_folders:
+    description: 'Shared folders list'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create shared folder symlinks
+      shell: bash
+      run: |
+        echo "🔗 Creating shared folder symlinks..."
+        
+        HOST="${{ inputs.host }}"
+        SSH_PORT="${{ inputs.ssh_port }}"
+        SSH_USER="${{ inputs.ssh_user }}"
+        DEPLOY_PATH="${{ inputs.deploy_path }}"
+        RELEASE_DIR="${{ inputs.release_dir }}"
+        SHARED_FOLDERS="${{ inputs.shared_folders }}"
+        
+        # Create .env.local symlink first
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "cd $DEPLOY_PATH/$RELEASE_DIR && ln -sf $DEPLOY_PATH/shared/.env.local .env.local"
+        
+        # Remove empty folders to create symlinks (LensOnline pattern)
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          cd '$DEPLOY_PATH/$RELEASE_DIR'
+          while IFS= read -r folder; do
+            if [ -n \"\$folder\" ]; then
+              echo \"Removing and symlinking: \$folder\"
+              rm -rf \"\$folder\"
+              ln -sf \"$DEPLOY_PATH/shared/\$folder\" \"\$folder\"
+            fi
+          done << 'EOF'
+        $SHARED_FOLDERS
+        EOF
+        "

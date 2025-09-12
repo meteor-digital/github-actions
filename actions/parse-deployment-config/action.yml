@@ -1,0 +1,297 @@
+name: 'Parse Deployment Configuration'
+description: 'Parses deployment configuration and merges with framework defaults'
+
+inputs:
+  config_file:
+    description: 'Path to deployment configuration file'
+    required: false
+    default: '.github/deployment-config.yml'
+  environment:
+    description: 'Target environment'
+    required: true
+  project_type:
+    description: 'Project type (shopware, laravel, symfony)'
+    required: true
+
+outputs:
+  host:
+    description: 'Deployment host'
+    value: ${{ steps.parse.outputs.host }}
+  path:
+    description: 'Deployment path'
+    value: ${{ steps.parse.outputs.path }}
+  provider:
+    description: 'Hosting provider'
+    value: ${{ steps.parse.outputs.provider }}
+  ssh_port:
+    description: 'SSH port'
+    value: ${{ steps.parse.outputs.ssh_port }}
+  php_service:
+    description: 'PHP service name'
+    value: ${{ steps.parse.outputs.php_service }}
+  maintenance_mode:
+    description: 'Enable maintenance mode'
+    value: ${{ steps.parse.outputs.maintenance_mode }}
+  keep_releases:
+    description: 'Number of releases to keep'
+    value: ${{ steps.parse.outputs.keep_releases }}
+  messenger_worker_id:
+    description: 'Messenger worker ID'
+    value: ${{ steps.parse.outputs.messenger_worker_id }}
+  shared_folders:
+    description: 'Shared folders list'
+    value: ${{ steps.parse.outputs.shared_folders }}
+  pre_deploy_commands:
+    description: 'Pre-deployment commands'
+    value: ${{ steps.parse.outputs.pre_deploy_commands }}
+  post_deploy_commands:
+    description: 'Post-deployment commands'
+    value: ${{ steps.parse.outputs.post_deploy_commands }}
+  migration_command:
+    description: 'Database migration command'
+    value: ${{ steps.parse.outputs.migration_command }}
+  maintenance_enable_cmd:
+    description: 'Maintenance enable command'
+    value: ${{ steps.parse.outputs.maintenance_enable_cmd }}
+  maintenance_disable_cmd:
+    description: 'Maintenance disable command'
+    value: ${{ steps.parse.outputs.maintenance_disable_cmd }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Parse deployment configuration
+      id: parse
+      shell: bash
+      run: |
+        CONFIG_FILE="${{ inputs.config_file }}"
+        ENVIRONMENT="${{ inputs.environment }}"
+        PROJECT_TYPE="${{ inputs.project_type }}"
+        
+        echo "🔧 Loading framework defaults and parsing deployment configuration"
+        echo "  Project Type: $PROJECT_TYPE"
+        echo "  Environment: $ENVIRONMENT"
+        echo "  Config File: $CONFIG_FILE"
+        
+        # Set framework-specific defaults (embedded in action)
+        case "$PROJECT_TYPE" in
+          'shopware')
+            echo "✅ Loading Shopware framework defaults"
+            DEFAULT_SHARED_FOLDERS="files
+        public/media
+        public/sitemap
+        public/thumbnail
+        config/jwt
+        var/log"
+            DEFAULT_PRE_DEPLOY="bin/console cache:warmup --no-optional-warmers
+        bin/console plugin:refresh"
+            DEFAULT_POST_DEPLOY="bin/console theme:compile --active-only
+        bin/console scheduled-task:register
+        bin/console dal:refresh:index"
+            DEFAULT_KEEP_RELEASES="3"
+            MIGRATION_COMMAND="bin/console database:migrate --all"
+            MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
+            MAINTENANCE_DISABLE_CMD="bin/console sales-channel:maintenance:disable --all"
+            ;;
+          'laravel')
+            echo "✅ Loading Laravel framework defaults"
+            DEFAULT_SHARED_FOLDERS="storage
+        bootstrap/cache"
+            DEFAULT_PRE_DEPLOY=""
+            DEFAULT_POST_DEPLOY="php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+        php artisan optimize"
+            DEFAULT_KEEP_RELEASES="3"
+            MIGRATION_COMMAND="php artisan migrate --force"
+            MAINTENANCE_ENABLE_CMD="php artisan down"
+            MAINTENANCE_DISABLE_CMD="php artisan up"
+            ;;
+          'symfony')
+            echo "✅ Loading Symfony framework defaults"
+            DEFAULT_SHARED_FOLDERS="var
+        public/uploads"
+            DEFAULT_PRE_DEPLOY="bin/console cache:warmup --no-optional-warmers"
+            DEFAULT_POST_DEPLOY="bin/console doctrine:migrations:migrate --no-interaction"
+            DEFAULT_KEEP_RELEASES="3"
+            MIGRATION_COMMAND="bin/console doctrine:migrations:migrate --no-interaction"
+            MAINTENANCE_ENABLE_CMD="touch maintenance.html"
+            MAINTENANCE_DISABLE_CMD="rm -f maintenance.html"
+            ;;
+          *)
+            echo "❌ Error: No defaults found for project type '$PROJECT_TYPE'"
+            echo "Supported project types: shopware, laravel, symfony"
+            exit 1
+            ;;
+        esac
+        
+        # Initialize configuration values
+        HOST=""
+        PATH=""
+        PROVIDER=""
+        SSH_PORT="22"
+        PHP_SERVICE=""
+        MAINTENANCE_MODE="true"
+        MESSENGER_WORKER_ID=""
+        
+        # Set defaults from framework defaults
+        SHARED_FOLDERS="$DEFAULT_SHARED_FOLDERS"
+        PRE_DEPLOY_COMMANDS="$DEFAULT_PRE_DEPLOY"
+        POST_DEPLOY_COMMANDS="$DEFAULT_POST_DEPLOY"
+        KEEP_RELEASES="$DEFAULT_KEEP_RELEASES"
+        
+        # Parse project-specific configuration and override defaults
+        if [ -f "$CONFIG_FILE" ]; then
+          echo "✅ Configuration file found: $CONFIG_FILE"
+          
+          # Parse environment-specific configuration
+          if command -v yq >/dev/null 2>&1; then
+            echo "📦 Using yq for project configuration parsing"
+            HOST=$(yq eval ".environments.$ENVIRONMENT.host" "$CONFIG_FILE" 2>/dev/null)
+            PATH=$(yq eval ".environments.$ENVIRONMENT.path" "$CONFIG_FILE" 2>/dev/null)
+            MAINTENANCE_MODE=$(yq eval ".environments.$ENVIRONMENT.maintenance_mode" "$CONFIG_FILE" 2>/dev/null)
+            
+            # Parse hosting configuration
+            PROVIDER=$(yq eval ".hosting.provider" "$CONFIG_FILE" 2>/dev/null)
+            SSH_PORT=$(yq eval ".hosting.ssh_port" "$CONFIG_FILE" 2>/dev/null)
+            PHP_SERVICE=$(yq eval ".hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
+            MESSENGER_WORKER_ID=$(yq eval ".hosting.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
+            
+            # Parse deployment overrides (override defaults)
+            PROJECT_KEEP_RELEASES=$(yq eval ".deployment.cleanup.keep_releases" "$CONFIG_FILE" 2>/dev/null)
+            if [ -n "$PROJECT_KEEP_RELEASES" ] && [ "$PROJECT_KEEP_RELEASES" != "null" ]; then
+              KEEP_RELEASES="$PROJECT_KEEP_RELEASES"
+            fi
+          else
+            echo "📝 Using grep/sed for project configuration parsing"
+            # Parse environment configuration
+            ENV_SECTION=$(awk "/^[[:space:]]*$ENVIRONMENT:/{flag=1; next} /^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*:/{if(flag) exit} flag" "$CONFIG_FILE")
+            if [ -n "$ENV_SECTION" ]; then
+              HOST=$(echo "$ENV_SECTION" | grep "host:" | sed 's/.*host:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              PATH=$(echo "$ENV_SECTION" | grep "path:" | sed 's/.*path:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              MAINTENANCE_MODE=$(echo "$ENV_SECTION" | grep "maintenance_mode:" | sed 's/.*maintenance_mode:[[:space:]]*\([^[:space:]]*\).*/\1/' | head -1)
+            fi
+            
+            # Parse hosting configuration
+            HOSTING_SECTION=$(awk "/^hosting:/{flag=1; next} /^[a-zA-Z_][a-zA-Z0-9_]*:/{if(flag) exit} flag" "$CONFIG_FILE")
+            if [ -n "$HOSTING_SECTION" ]; then
+              PROVIDER=$(echo "$HOSTING_SECTION" | grep "provider:" | sed 's/.*provider:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              SSH_PORT=$(echo "$HOSTING_SECTION" | grep "ssh_port:" | sed 's/.*ssh_port:[[:space:]]*\([0-9]*\).*/\1/' | head -1)
+              PHP_SERVICE=$(echo "$HOSTING_SECTION" | grep "php_service:" | sed 's/.*php_service:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              MESSENGER_WORKER_ID=$(echo "$HOSTING_SECTION" | grep "messenger_worker_id:" | sed 's/.*messenger_worker_id:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+            fi
+            
+            # Parse deployment overrides
+            PROJECT_KEEP_RELEASES=$(grep -A 5 "cleanup:" "$CONFIG_FILE" | grep "keep_releases:" | sed 's/.*keep_releases:[[:space:]]*\([0-9]*\).*/\1/' | head -1)
+            if [ -n "$PROJECT_KEEP_RELEASES" ]; then
+              KEEP_RELEASES="$PROJECT_KEEP_RELEASES"
+            fi
+          fi
+          
+          # Parse project-specific shared folders (override defaults)
+          if grep -q "shared_folders:" "$CONFIG_FILE"; then
+            PROJECT_SHARED_FOLDERS=$(awk '
+              /shared_folders:/ { in_shared_folders = 1; next }
+              in_shared_folders && /^[[:space:]]*[^[:space:]-]/ && !/^[[:space:]]*-/ { in_shared_folders = 0 }
+              in_shared_folders && /^[[:space:]]*-/ {
+                gsub(/^[[:space:]]*-[[:space:]]*["\x27]?/, "")
+                gsub(/["\x27][[:space:]]*$/, "")
+                if (length($0) > 0) print $0
+              }
+            ' "$CONFIG_FILE")
+            if [ -n "$PROJECT_SHARED_FOLDERS" ]; then
+              echo "  Overriding shared folders with project configuration"
+              SHARED_FOLDERS="$PROJECT_SHARED_FOLDERS"
+            fi
+          fi
+          
+          # Parse project-specific pre-deploy commands (override defaults)
+          if grep -q "pre_deploy:" "$CONFIG_FILE"; then
+            PROJECT_PRE_DEPLOY=$(awk '
+              /pre_deploy:/ { in_pre_deploy = 1; next }
+              in_pre_deploy && /^[[:space:]]*[^[:space:]-]/ && !/^[[:space:]]*-/ { in_pre_deploy = 0 }
+              in_pre_deploy && /^[[:space:]]*-/ {
+                gsub(/^[[:space:]]*-[[:space:]]*["\x27]?/, "")
+                gsub(/["\x27][[:space:]]*$/, "")
+                if (length($0) > 0) print $0
+              }
+            ' "$CONFIG_FILE")
+            echo "  Overriding pre-deploy commands with project configuration"
+            PRE_DEPLOY_COMMANDS="$PROJECT_PRE_DEPLOY"
+          fi
+          
+          # Parse project-specific post-deploy commands (override defaults)
+          if grep -q "post_deploy:" "$CONFIG_FILE"; then
+            PROJECT_POST_DEPLOY=$(awk '
+              /post_deploy:/ { in_post_deploy = 1; next }
+              in_post_deploy && /^[[:space:]]*[^[:space:]-]/ && !/^[[:space:]]*-/ { in_post_deploy = 0 }
+              in_post_deploy && /^[[:space:]]*-/ {
+                gsub(/^[[:space:]]*-[[:space:]]*["\x27]?/, "")
+                gsub(/["\x27][[:space:]]*$/, "")
+                if (length($0) > 0) print $0
+              }
+            ' "$CONFIG_FILE")
+            echo "  Overriding post-deploy commands with project configuration"
+            POST_DEPLOY_COMMANDS="$PROJECT_POST_DEPLOY"
+          fi
+        else
+          echo "❌ Configuration file not found: $CONFIG_FILE"
+          exit 1
+        fi
+        
+        # Validate required configuration
+        if [ -z "$HOST" ] || [ "$HOST" = "null" ]; then
+          echo "❌ Error: Host not configured for environment '$ENVIRONMENT'"
+          exit 1
+        fi
+        
+        if [ -z "$PATH" ] || [ "$PATH" = "null" ]; then
+          echo "❌ Error: Path not configured for environment '$ENVIRONMENT'"
+          exit 1
+        fi
+        
+        if [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ]; then
+          echo "❌ Error: Hosting provider not configured - must specify one of: level27, byte, hipex, hostedpower, generic"
+          exit 1
+        fi
+        
+        # Set defaults for optional values
+        [ "$SSH_PORT" = "null" ] && SSH_PORT="22"
+        [ "$MAINTENANCE_MODE" = "null" ] && MAINTENANCE_MODE="true"
+        [ "$KEEP_RELEASES" = "null" ] && KEEP_RELEASES="3"
+        
+        echo "📊 Deployment configuration:"
+        echo "  Environment: $ENVIRONMENT"
+        echo "  Host: $HOST"
+        echo "  Path: $PATH"
+        echo "  Provider: $PROVIDER"
+        echo "  SSH Port: $SSH_PORT"
+        echo "  PHP Service: $PHP_SERVICE"
+        echo "  Maintenance Mode: $MAINTENANCE_MODE"
+        echo "  Keep Releases: $KEEP_RELEASES"
+        echo "  Messenger Worker ID: $MESSENGER_WORKER_ID"
+        echo "  Shared Folders: $(echo "$SHARED_FOLDERS" | wc -l) folders"
+        echo "  Pre-deploy Commands: $(echo "$PRE_DEPLOY_COMMANDS" | wc -l) commands"
+        echo "  Post-deploy Commands: $(echo "$POST_DEPLOY_COMMANDS" | wc -l) commands"
+        
+        # Set outputs
+        echo "host=$HOST" >> $GITHUB_OUTPUT
+        echo "path=$PATH" >> $GITHUB_OUTPUT
+        echo "provider=$PROVIDER" >> $GITHUB_OUTPUT
+        echo "ssh_port=$SSH_PORT" >> $GITHUB_OUTPUT
+        echo "php_service=$PHP_SERVICE" >> $GITHUB_OUTPUT
+        echo "maintenance_mode=$MAINTENANCE_MODE" >> $GITHUB_OUTPUT
+        echo "keep_releases=$KEEP_RELEASES" >> $GITHUB_OUTPUT
+        echo "messenger_worker_id=$MESSENGER_WORKER_ID" >> $GITHUB_OUTPUT
+        echo "shared_folders<<EOF" >> $GITHUB_OUTPUT
+        echo "$SHARED_FOLDERS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "pre_deploy_commands<<EOF" >> $GITHUB_OUTPUT
+        echo "$PRE_DEPLOY_COMMANDS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "post_deploy_commands<<EOF" >> $GITHUB_OUTPUT
+        echo "$POST_DEPLOY_COMMANDS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "migration_command=$MIGRATION_COMMAND" >> $GITHUB_OUTPUT
+        echo "maintenance_enable_cmd=$MAINTENANCE_ENABLE_CMD" >> $GITHUB_OUTPUT
+        echo "maintenance_disable_cmd=$MAINTENANCE_DISABLE_CMD" >> $GITHUB_OUTPUT

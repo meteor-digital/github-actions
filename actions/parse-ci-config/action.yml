@@ -1,5 +1,5 @@
-name: 'Read Configuration'
-description: 'Reads and parses CI configuration from YAML file'
+name: 'Parse CI Configuration'
+description: 'Parses CI configuration from YAML file'
 
 inputs:
   config_file:

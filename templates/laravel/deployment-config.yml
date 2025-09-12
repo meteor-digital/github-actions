@@ -1,4 +1,4 @@
-# Deployment configuration for Shopware projects
+# Deployment configuration for Laravel projects
 # Framework-specific defaults are automatically loaded from the shared actions repo
 # Only specify values that differ from the defaults
 
@@ -22,22 +22,21 @@ hosting:
   provider: "level27"  # Required: level27, byte, hipex, hostedpower, generic
   ssh_port: 22
   php_service: "php8.1-fpm"
-  messenger_worker_id: "1"  # For Shopware/Symfony projects with Level27
 
 # Optional: Override framework defaults
 # deployment:
 #   shared_folders:
-#     - "files"
-#     - "public/media"
+#     - "storage"
+#     - "bootstrap/cache"
 #     - "custom/shared/folder"  # Add custom folders to defaults
 #   
 #   commands:
 #     pre_deploy:
-#       - "bin/console plugin:refresh"
 #       - "custom-pre-deploy-command"  # Add custom commands
 #     post_deploy:
-#       - "bin/console cache:warmup"
-#       - "bin/console theme:compile --active-only"
+#       - "php artisan config:cache"
+#       - "php artisan route:cache"
+#       - "php artisan view:cache"
 #       - "custom-post-deploy-command"  # Add custom commands
 #   
 #   cleanup:

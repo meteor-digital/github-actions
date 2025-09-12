@@ -1,0 +1,47 @@
+name: 'Cleanup Old Releases'
+description: 'Cleans up old releases following LensOnline patterns'
+
+inputs:
+  host:
+    description: 'Target host'
+    required: true
+  ssh_port:
+    description: 'SSH port'
+    required: true
+  ssh_user:
+    description: 'SSH username'
+    required: true
+  deploy_path:
+    description: 'Deployment path'
+    required: true
+  keep_releases:
+    description: 'Number of releases to keep'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cleanup old releases
+      shell: bash
+      run: |
+        echo "🧹 Cleaning up old releases..."
+        
+        HOST="${{ inputs.host }}"
+        SSH_PORT="${{ inputs.ssh_port }}"
+        SSH_USER="${{ inputs.ssh_user }}"
+        DEPLOY_PATH="${{ inputs.deploy_path }}"
+        KEEP_RELEASES="${{ inputs.keep_releases }}"
+        
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          TAIL_FROM_LINE=\$(($KEEP_RELEASES+1))
+          
+          # Count current releases
+          RELEASES=\$(cd $DEPLOY_PATH/releases/ && ls -A1 | wc -l)
+          
+          # Check if we need to delete old releases
+          if [ \"\$RELEASES\" -gt \"$KEEP_RELEASES\" ]; then
+              # Delete oldest releases
+              cd $DEPLOY_PATH/releases/
+              && ls -A1 | sort -rn | tail -n +\$TAIL_FROM_LINE | xargs -r rm -rf
+          fi
+        "

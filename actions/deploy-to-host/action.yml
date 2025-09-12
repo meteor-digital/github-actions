@@ -1,5 +1,5 @@
 name: 'Deploy to Host'
-description: 'Deploys the built project to the target environment'
+description: 'Deploys the built project to the target environment using proven deployment patterns'
 
 inputs:
   config_file:
@@ -7,166 +7,210 @@ inputs:
     required: false
     default: '.github/deployment-config.yml'
   environment:
-    description: 'Target environment'
+    description: 'Target environment (test, acc, prod, etc.)'
     required: true
   build_path:
     description: 'Path to built project files'
     required: false
     default: '.'
+  ssh_private_key:
+    description: 'SSH private key for deployment'
+    required: true
+  ssh_user:
+    description: 'SSH username for deployment'
+    required: true
+
+outputs:
+  deployment_status:
+    description: 'Status of the deployment (success, failed)'
+    value: ${{ steps.deployment_result.outputs.status }}
+  release_path:
+    description: 'Path to the deployed release'
+    value: ${{ steps.deployment_result.outputs.release_path }}
+  deploy_date:
+    description: 'Deployment date/time identifier'
+    value: ${{ steps.deployment_result.outputs.deploy_date }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Read deployment configuration
+    - name: Detect project type
+      id: project_type
+      uses: ../detect-project-type
+
+    - name: Parse deployment configuration
       id: config
-      shell: bash
-      run: |
-        if [ -f "${{ inputs.config_file }}" ]; then
-          # Parse deployment configuration (simplified - will be enhanced)
-          echo "Reading deployment configuration for environment: ${{ inputs.environment }}"
-          # Configuration parsing will be added in implementation
-        else
-          echo "No deployment configuration found, using defaults"
-        fi
-        
-        # Set default values (will be replaced with actual config parsing)
-        echo "host=example.com" >> $GITHUB_OUTPUT
-        echo "path=/var/www/html" >> $GITHUB_OUTPUT
-        echo "provider=level27" >> $GITHUB_OUTPUT
-        echo "ssh_port=22" >> $GITHUB_OUTPUT
-        echo "php_service=php8.1-fpm" >> $GITHUB_OUTPUT
-        
-    - name: Setup SSH connection
-      shell: bash
-      run: |
-        echo "Setting up SSH connection..."
-        mkdir -p ~/.ssh
-        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        
-        # Add host to known_hosts
-        ssh-keyscan -p ${{ steps.config.outputs.ssh_port }} ${{ steps.config.outputs.host }} >> ~/.ssh/known_hosts
-        
-    - name: Create release directory
-      shell: bash
-      run: |
-        RELEASE_DIR="releases/$(date +%Y%m%d_%H%M%S)_${{ github.sha }}"
-        echo "release_dir=$RELEASE_DIR" >> $GITHUB_ENV
-        
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          mkdir -p ${{ steps.config.outputs.path }}/$RELEASE_DIR
-        "
-        
+      uses: ../parse-deployment-config
+      with:
+        config_file: ${{ inputs.config_file }}
+        environment: ${{ inputs.environment }}
+        project_type: ${{ steps.project_type.outputs.type }}
+
+    - name: Setup deployment environment
+      id: setup
+      uses: ../setup-deployment
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_private_key: ${{ inputs.ssh_private_key }}
+
     - name: Sync files to host
-      shell: bash
-      run: |
-        echo "Syncing files to host..."
-        rsync -avz --delete \
-          -e "ssh -p ${{ steps.config.outputs.ssh_port }}" \
-          ${{ inputs.build_path }}/ \
-          user@${{ steps.config.outputs.host }}:${{ steps.config.outputs.path }}/${{ env.release_dir }}/
-          
+      uses: burnett01/rsync-deployments@7.0.2
+      with:
+        switches: -azlp --exclude-from="./sysadmin/deploy/sync-to-host-excludes"
+        path: ${{ inputs.build_path }}/
+        remote_path: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}/
+        remote_host: ${{ steps.config.outputs.host }}
+        remote_port: ${{ steps.config.outputs.ssh_port }}
+        remote_user: ${{ inputs.ssh_user }}
+        remote_key: ${{ inputs.ssh_private_key }}
+
     - name: Create shared folder symlinks
-      shell: bash
-      run: |
-        echo "Creating shared folder symlinks..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}/${{ env.release_dir }}
-          
-          # Default shared folders (will be configurable)
-          for folder in files public/media public/sitemap public/thumbnail config/jwt var/log; do
-            if [ -d ../shared/\$folder ]; then
-              rm -rf \$folder
-              ln -sf ../shared/\$folder \$folder
-            fi
-          done
-        "
-        
+      uses: ../create-symlinks
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        deploy_path: ${{ steps.config.outputs.path }}
+        release_dir: ${{ steps.setup.outputs.release_dir }}
+        shared_folders: ${{ steps.config.outputs.shared_folders }}
+
+    - name: Run pre-deployment commands
+      if: steps.config.outputs.pre_deploy_commands != ''
+      uses: ../run-commands-on-host
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        working_directory: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}
+        commands: ${{ steps.config.outputs.pre_deploy_commands }}
+        description: 'pre-deployment commands'
+
     - name: Enable maintenance mode
-      shell: bash
-      run: |
-        echo "Enabling maintenance mode..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}/current
-          touch maintenance.html || true
-        "
-        
-    - name: Stop services
-      shell: bash
-      run: |
-        echo "Stopping services..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          # Stop messenger workers and other services
-          sudo systemctl stop ${{ steps.config.outputs.php_service }} || true
-        "
-        
+      if: steps.config.outputs.maintenance_mode == 'true'
+      uses: ../run-commands-on-host
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        working_directory: ${{ steps.config.outputs.path }}/current
+        commands: ${{ steps.config.outputs.maintenance_enable_cmd }}
+        description: 'maintenance mode (enable)'
+
+    - name: Stop Services
+      uses: ../manage-services
+      with:
+        action: stop
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        project_type: ${{ steps.project_type.outputs.type }}
+        provider: ${{ steps.config.outputs.provider }}
+        php_service: ${{ steps.config.outputs.php_service }}
+        messenger_worker_id: ${{ steps.config.outputs.messenger_worker_id }}
+
     - name: Run database migrations
-      shell: bash
-      run: |
-        echo "Running database migrations..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}/${{ env.release_dir }}
-          bin/console database:migrate --all || true
-        "
-        
-    - name: Switch to new release (atomic deployment)
-      shell: bash
-      run: |
-        echo "Switching to new release..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}
-          ln -sfn ${{ env.release_dir }} current_new
-          mv current_new current
-        "
-        
+      uses: ../run-commands-on-host
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        working_directory: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}
+        commands: ${{ steps.config.outputs.migration_command }}
+        description: 'database migrations'
+
+    - name: Activate new release
+      uses: ../activate-release
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        deploy_path: ${{ steps.config.outputs.path }}
+        deploy_date: ${{ steps.setup.outputs.deploy_date }}
+
     - name: Run post-deployment commands
-      shell: bash
-      run: |
-        echo "Running post-deployment commands..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}/current
-          
-          # Default post-deployment commands (will be configurable)
-          bin/console cache:warmup || true
-          bin/console theme:compile --active-only || true
-        "
-        
-    - name: Restart services
-      shell: bash
-      run: |
-        echo "Restarting services..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          sudo systemctl start ${{ steps.config.outputs.php_service }}
-        "
-        
+      uses: ../run-commands-on-host
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        working_directory: ${{ steps.config.outputs.path }}/current
+        commands: ${{ steps.config.outputs.post_deploy_commands }}
+        description: 'post-deployment commands'
+        fail_on_error: 'false'
+
+    - name: Restart Services
+      uses: ../manage-services
+      with:
+        action: restart
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        project_type: ${{ steps.project_type.outputs.type }}
+        provider: ${{ steps.config.outputs.provider }}
+        php_service: ${{ steps.config.outputs.php_service }}
+        messenger_worker_id: ${{ steps.config.outputs.messenger_worker_id }}
+
     - name: Disable maintenance mode
-      shell: bash
-      run: |
-        echo "Disabling maintenance mode..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}/current
-          rm -f maintenance.html
-        "
-        
+      if: steps.config.outputs.maintenance_mode == 'true'
+      uses: ../run-commands-on-host
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        working_directory: ${{ steps.config.outputs.path }}/current
+        commands: ${{ steps.config.outputs.maintenance_disable_cmd }}
+        description: 'maintenance mode (disable)'
+
     - name: Cleanup old releases
+      uses: ../cleanup-releases
+      with:
+        host: ${{ steps.config.outputs.host }}
+        ssh_port: ${{ steps.config.outputs.ssh_port }}
+        ssh_user: ${{ inputs.ssh_user }}
+        deploy_path: ${{ steps.config.outputs.path }}
+        keep_releases: ${{ steps.config.outputs.keep_releases }}
+
+    - name: Set deployment result
+      id: deployment_result
+      if: always()
       shell: bash
       run: |
-        echo "Cleaning up old releases..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}/releases
-          ls -t | tail -n +4 | xargs rm -rf || true
-        "
-        
-    - name: Rollback on failure
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "release_path=${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}" >> $GITHUB_OUTPUT
+          echo "deploy_date=${{ steps.setup.outputs.deploy_date }}" >> $GITHUB_OUTPUT
+          echo "✅ Deployment completed successfully"
+        else
+          echo "status=failed" >> $GITHUB_OUTPUT
+          echo "release_path=" >> $GITHUB_OUTPUT
+          echo "deploy_date=" >> $GITHUB_OUTPUT
+          echo "❌ Deployment failed"
+        fi
+
+    - name: Cleanup after failure
       if: failure()
       shell: bash
       run: |
-        echo "Deployment failed, attempting rollback..."
-        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
-          cd ${{ steps.config.outputs.path }}
-          if [ -L current_backup ]; then
-            ln -sfn \$(readlink current_backup) current
-            sudo systemctl restart ${{ steps.config.outputs.php_service }}
-            rm -f current/maintenance.html
+        echo "🔄 Deployment failed, cleaning up..."
+        
+        HOST="${{ steps.config.outputs.host }}"
+        SSH_PORT="${{ steps.config.outputs.ssh_port }}"
+        SSH_USER="${{ inputs.ssh_user }}"
+        DEPLOY_PATH="${{ steps.config.outputs.path }}"
+        DEPLOY_DATE="${{ steps.setup.outputs.deploy_date }}"
+        PROJECT_TYPE="${{ steps.project_type.outputs.type }}"
+        
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          # Disable maintenance mode (framework-specific)
+          [ -d $DEPLOY_PATH/current ]
+          && cd $DEPLOY_PATH/current
+          && ${{ steps.config.outputs.maintenance_disable_cmd }}
+          || echo 'Skipping maintenance disable'
+          
+          # Clear cache for Shopware/Symfony projects (LensOnline pattern)
+          if [ '$PROJECT_TYPE' = 'shopware' ] || [ '$PROJECT_TYPE' = 'symfony' ]; then
+            cd $DEPLOY_PATH/releases/$DEPLOY_DATE
+            && bin/console cache:clear
           fi
-        " || true
+        " || echo "⚠️  Cleanup encountered issues but continued"
