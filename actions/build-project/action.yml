@@ -6,107 +6,136 @@ inputs:
     description: 'Path to CI configuration file'
     required: false
     default: '.github/ci-config.yml'
-  build_type:
-    description: 'Build type (development, production)'
-    required: false
-    default: 'production'
 
 runs:
   using: 'composite'
   steps:
-    - name: Read build configuration
+    - name: Read configuration
       id: config
-      shell: bash
-      run: |
-        if [ -f "${{ inputs.config_file }}" ]; then
-          # Parse build commands and exclude patterns (simplified - will be enhanced)
-          PROJECT_NAME=$(grep -A 5 "project:" "${{ inputs.config_file }}" | grep "name:" | cut -d'"' -f2 || echo "${{ github.event.repository.name }}")
-          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
-        else
-          echo "project_name=${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
-        fi
+      uses: ../read-config
+      with:
+        config_file: ${{ inputs.config_file }}
         
-    - name: Auto-detect project type
+    - name: Detect project type
       id: project-type
-      shell: bash
-      run: |
-        if [ -f "shopware-project.yml" ]; then
-          echo "type=shopware" >> $GITHUB_OUTPUT
-        elif [ -f "artisan" ]; then
-          echo "type=laravel" >> $GITHUB_OUTPUT
-        elif [ -f "symfony.lock" ]; then
-          echo "type=symfony" >> $GITHUB_OUTPUT
-        else
-          echo "type=shopware" >> $GITHUB_OUTPUT  # Default to shopware
-        fi
+      uses: ../detect-project-type
+        
+    - name: Install Shopware CLI
+      if: steps.project-type.outputs.type == 'shopware'
+      uses: shopware/shopware-cli-action@v2
         
     - name: Build Shopware project
       if: steps.project-type.outputs.type == 'shopware'
-      shell: bash
-      run: |
-        echo "Building Shopware project..."
-        # Install Shopware CLI if not present
-        if ! command -v shopware-cli &> /dev/null; then
-          echo "Installing Shopware CLI..."
-          # Shopware CLI installation will be added in implementation
-        fi
-        
-        # Run Shopware build process
-        echo "Running Shopware build process..."
-        # Shopware-specific build commands will be added in implementation
+      uses: shopwareLabs/build-project-action@v1
+      env:
+        SHOPWARE_CLI_EXPERIMENTAL_ASSET_CACHING: 1
         
     - name: Build Laravel project
       if: steps.project-type.outputs.type == 'laravel'
       shell: bash
       run: |
         echo "Building Laravel project..."
+        
+        # Build frontend assets if package.json exists
         if [ -f "package.json" ]; then
+          echo "Building frontend assets..."
           npm run build
         fi
+        
+        # Optimize Laravel application
+        echo "Optimizing Laravel application..."
         php artisan optimize
+        
+        echo "Laravel build completed"
         
     - name: Build Symfony project
       if: steps.project-type.outputs.type == 'symfony'
       shell: bash
       run: |
         echo "Building Symfony project..."
+        
+        # Build frontend assets if package.json exists
         if [ -f "package.json" ]; then
+          echo "Building frontend assets..."
           npm run build
         fi
+        
+        # Warm up Symfony cache for production
+        echo "Warming up Symfony cache..."
         bin/console cache:warmup --env=prod
         
+        echo "Symfony build completed"
+        
     - name: Run custom build commands
+      if: steps.config.outputs.build_commands != ''
       shell: bash
       run: |
-        if [ -f "${{ inputs.config_file }}" ]; then
-          echo "Running custom build commands from configuration..."
-          # Custom build commands parsing will be added in implementation
-        fi
+        echo "Running custom build commands from configuration..."
+        
+        # Execute each build command
+        while IFS= read -r command; do
+          if [ -n "$command" ]; then
+            echo "Executing: $command"
+            eval "$command"
+          fi
+        done <<< "${{ steps.config.outputs.build_commands }}"
+        
+        echo "Custom build commands completed"
         
     - name: Remove excluded files
       shell: bash
       run: |
         echo "Removing excluded files and directories..."
-        # Default exclusions
-        rm -rf .git node_modules tests
         
-        # Configuration-based exclusions will be added in implementation
-        if [ -f "${{ inputs.config_file }}" ]; then
-          echo "Applying custom exclusion patterns..."
-        fi
+        # Process exclude patterns
+        while IFS= read -r pattern; do
+          if [ -n "$pattern" ]; then
+            echo "Removing pattern: $pattern"
+            # Use find with -delete for safer removal
+            if [[ "$pattern" == *"/*" ]]; then
+              # Directory pattern
+              find . -path "./$pattern" -type d -exec rm -rf {} + 2>/dev/null || true
+            else
+              # File pattern
+              find . -name "$pattern" -type f -delete 2>/dev/null || true
+            fi
+          fi
+        done <<< "${{ steps.config.outputs.exclude_patterns }}"
+        
+        echo "File exclusion completed"
         
     - name: Create build metadata
       shell: bash
       run: |
+        echo "Creating build metadata..."
+        
+        # Get current timestamp in ISO format
+        BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        
+        # Get branch name or tag
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          REF_NAME="${{ github.ref_name }}"
+          REF_TYPE="tag"
+        else
+          REF_NAME="${{ github.ref_name }}"
+          REF_TYPE="branch"
+        fi
+        
+        # Create build-info.json with comprehensive metadata
         cat > build-info.json << EOF
         {
           "project_name": "${{ steps.config.outputs.project_name }}",
           "project_type": "${{ steps.project-type.outputs.type }}",
-          "build_type": "${{ inputs.build_type }}",
           "commit_sha": "${{ github.sha }}",
           "commit_ref": "${{ github.ref }}",
-          "build_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-          "workflow_run_id": "${{ github.run_id }}"
+          "ref_name": "$REF_NAME",
+          "ref_type": "$REF_TYPE",
+          "build_timestamp": "$BUILD_TIMESTAMP",
+          "workflow_run_id": "${{ github.run_id }}",
+          "workflow_run_number": "${{ github.run_number }}",
+          "actor": "${{ github.actor }}",
+          "repository": "${{ github.repository }}",
+          "event_name": "${{ github.event_name }}"
         }
         EOF
         

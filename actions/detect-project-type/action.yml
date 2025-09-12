@@ -1,0 +1,31 @@
+name: 'Detect Project Type'
+description: 'Auto-detects project type based on project files'
+
+outputs:
+  type:
+    description: 'Detected project type (shopware, laravel, symfony)'
+    value: ${{ steps.detect.outputs.type }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Auto-detect project type
+      id: detect
+      shell: bash
+      run: |
+        echo "🔍 Auto-detecting project type..."
+        
+        # Detection priority order as per design
+        if [ -f "shopware-project.yml" ]; then
+          echo "✅ Found shopware-project.yml - Shopware project detected"
+          echo "type=shopware" >> $GITHUB_OUTPUT
+        elif [ -f "artisan" ]; then
+          echo "✅ Found artisan file - Laravel project detected"
+          echo "type=laravel" >> $GITHUB_OUTPUT
+        elif [ -f "symfony.lock" ]; then
+          echo "✅ Found symfony.lock - Symfony project detected"
+          echo "type=symfony" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️  No specific project files found - defaulting to Shopware"
+          echo "type=shopware" >> $GITHUB_OUTPUT
+        fi

@@ -36,60 +36,27 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Auto-detect project type
+    - name: Detect project type
       id: project-type
-      shell: bash
-      run: |
-        echo "🔍 Auto-detecting project type..."
-        if [ -f "shopware-project.yml" ]; then
-          echo "✅ Found shopware-project.yml - Shopware project detected"
-          echo "type=shopware" >> $GITHUB_OUTPUT
-        elif [ -f "artisan" ]; then
-          echo "✅ Found artisan file - Laravel project detected"
-          echo "type=laravel" >> $GITHUB_OUTPUT
-        elif [ -f "symfony.lock" ]; then
-          echo "✅ Found symfony.lock - Symfony project detected"
-          echo "type=symfony" >> $GITHUB_OUTPUT
-        else
-          echo "⚠️  No specific project files found - defaulting to Shopware"
-          echo "type=shopware" >> $GITHUB_OUTPUT
-        fi
+      uses: ../detect-project-type
 
-    - name: Read CI configuration
+    - name: Read configuration
       id: config
+      uses: ../read-config
+      with:
+        config_file: ${{ inputs.config_file }}
+        
+    - name: Validate runtime configuration
       shell: bash
       run: |
         CONFIG_FILE="${{ inputs.config_file }}"
         PROJECT_TYPE="${{ steps.project-type.outputs.type }}"
+        PHP_VERSION="${{ steps.config.outputs.php_version }}"
+        NODE_VERSION="${{ steps.config.outputs.node_version }}"
+        PHP_EXTENSIONS="${{ steps.config.outputs.php_extensions }}"
         
-        echo "📋 Reading configuration from: $CONFIG_FILE"
+        echo "📋 Configuration validation for: $CONFIG_FILE"
         echo "🎯 Project type: $PROJECT_TYPE"
-        
-        if [ ! -f "$CONFIG_FILE" ]; then
-          echo "❌ Configuration file not found: $CONFIG_FILE"
-          echo "💡 Please create a configuration file with runtime settings:"
-          echo "   runtime:"
-          echo "     php_version: \"8.1\""
-          echo "     node_version: \"18\""
-          echo "     php_extensions: \"mbstring, intl, gd, xml, zip, curl, opcache\""
-          exit 1
-        fi
-        
-        echo "✅ Configuration file found, parsing..."
-        
-        # Parse YAML using yq if available, otherwise use grep/sed
-        if command -v yq >/dev/null 2>&1; then
-          echo "📦 Using yq for YAML parsing"
-          PHP_VERSION=$(yq eval '.runtime.php_version' "$CONFIG_FILE" 2>/dev/null)
-          NODE_VERSION=$(yq eval '.runtime.node_version' "$CONFIG_FILE" 2>/dev/null)
-          PHP_EXTENSIONS=$(yq eval '.runtime.php_extensions' "$CONFIG_FILE" 2>/dev/null)
-        else
-          echo "📝 Using grep/sed for YAML parsing"
-          # Improved YAML parsing with better regex patterns
-          PHP_VERSION=$(grep -A 20 "^runtime:" "$CONFIG_FILE" | grep "^\s*php_version:" | sed 's/.*php_version:\s*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
-          NODE_VERSION=$(grep -A 20 "^runtime:" "$CONFIG_FILE" | grep "^\s*node_version:" | sed 's/.*node_version:\s*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
-          PHP_EXTENSIONS=$(grep -A 20 "^runtime:" "$CONFIG_FILE" | grep "^\s*php_extensions:" | sed 's/.*php_extensions:\s*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
-        fi
         
         # Validate required configuration values
         if [ -z "$PHP_VERSION" ] || [ "$PHP_VERSION" = "null" ]; then
@@ -113,10 +80,6 @@ runs:
         echo "🐘 PHP Version: $PHP_VERSION"
         echo "🟢 Node Version: $NODE_VERSION"
         echo "🔧 PHP Extensions: $PHP_EXTENSIONS"
-        
-        echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
-        echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
-        echo "php_extensions=$PHP_EXTENSIONS" >> $GITHUB_OUTPUT
 
     - name: Generate cache key
       id: cache-key-gen
