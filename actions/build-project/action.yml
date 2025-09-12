@@ -1,0 +1,114 @@
+name: 'Build Project'
+description: 'Builds the project using framework-specific commands and configurations'
+
+inputs:
+  config_file:
+    description: 'Path to CI configuration file'
+    required: false
+    default: '.github/ci-config.yml'
+  build_type:
+    description: 'Build type (development, production)'
+    required: false
+    default: 'production'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Read build configuration
+      id: config
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.config_file }}" ]; then
+          # Parse build commands and exclude patterns (simplified - will be enhanced)
+          PROJECT_NAME=$(grep -A 5 "project:" "${{ inputs.config_file }}" | grep "name:" | cut -d'"' -f2 || echo "${{ github.event.repository.name }}")
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+        else
+          echo "project_name=${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Auto-detect project type
+      id: project-type
+      shell: bash
+      run: |
+        if [ -f "shopware-project.yml" ]; then
+          echo "type=shopware" >> $GITHUB_OUTPUT
+        elif [ -f "artisan" ]; then
+          echo "type=laravel" >> $GITHUB_OUTPUT
+        elif [ -f "symfony.lock" ]; then
+          echo "type=symfony" >> $GITHUB_OUTPUT
+        else
+          echo "type=shopware" >> $GITHUB_OUTPUT  # Default to shopware
+        fi
+        
+    - name: Build Shopware project
+      if: steps.project-type.outputs.type == 'shopware'
+      shell: bash
+      run: |
+        echo "Building Shopware project..."
+        # Install Shopware CLI if not present
+        if ! command -v shopware-cli &> /dev/null; then
+          echo "Installing Shopware CLI..."
+          # Shopware CLI installation will be added in implementation
+        fi
+        
+        # Run Shopware build process
+        echo "Running Shopware build process..."
+        # Shopware-specific build commands will be added in implementation
+        
+    - name: Build Laravel project
+      if: steps.project-type.outputs.type == 'laravel'
+      shell: bash
+      run: |
+        echo "Building Laravel project..."
+        if [ -f "package.json" ]; then
+          npm run build
+        fi
+        php artisan optimize
+        
+    - name: Build Symfony project
+      if: steps.project-type.outputs.type == 'symfony'
+      shell: bash
+      run: |
+        echo "Building Symfony project..."
+        if [ -f "package.json" ]; then
+          npm run build
+        fi
+        bin/console cache:warmup --env=prod
+        
+    - name: Run custom build commands
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.config_file }}" ]; then
+          echo "Running custom build commands from configuration..."
+          # Custom build commands parsing will be added in implementation
+        fi
+        
+    - name: Remove excluded files
+      shell: bash
+      run: |
+        echo "Removing excluded files and directories..."
+        # Default exclusions
+        rm -rf .git node_modules tests
+        
+        # Configuration-based exclusions will be added in implementation
+        if [ -f "${{ inputs.config_file }}" ]; then
+          echo "Applying custom exclusion patterns..."
+        fi
+        
+    - name: Create build metadata
+      shell: bash
+      run: |
+        cat > build-info.json << EOF
+        {
+          "project_name": "${{ steps.config.outputs.project_name }}",
+          "project_type": "${{ steps.project-type.outputs.type }}",
+          "build_type": "${{ inputs.build_type }}",
+          "commit_sha": "${{ github.sha }}",
+          "commit_ref": "${{ github.ref }}",
+          "build_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "workflow_run_id": "${{ github.run_id }}"
+        }
+        EOF
+        
+        echo "Build metadata created:"
+        cat build-info.json

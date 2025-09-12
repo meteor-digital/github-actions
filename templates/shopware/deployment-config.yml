@@ -1,0 +1,48 @@
+# Example deployment configuration for Shopware projects
+environments:
+  test:
+    auto_deploy: true
+    branches: ["test/*"]
+    host: "${TEST_HOST}"
+    path: "${TEST_PATH}"
+    maintenance_mode: true
+    
+  acc:
+    auto_deploy: true
+    branches: ["release/*"]
+    host: "${ACC_HOST}"
+    path: "${ACC_PATH}"
+    maintenance_mode: true
+    
+  prod:
+    auto_deploy: false
+    triggers: ["tag"]
+    host: "${PROD_HOST}"
+    path: "${PROD_PATH}"
+    maintenance_mode: true
+
+hosting:
+  provider: "level27"
+  ssh_port: 22
+  php_service: "php8.1-fpm"
+  
+deployment:
+  shared_folders:
+    - "files"
+    - "public/media"
+    - "public/sitemap"
+    - "public/thumbnail"
+    - "config/jwt"
+    - "var/log"
+  
+  commands:
+    pre_deploy:
+      - "bin/console plugin:refresh"
+    post_deploy:
+      - "bin/console cache:warmup"
+      - "bin/console theme:compile --active-only"
+      - "bin/console scheduled-task:register"
+      - "bin/console dal:refresh:index"
+    
+  cleanup:
+    keep_releases: 3

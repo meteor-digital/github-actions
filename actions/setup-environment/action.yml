@@ -1,0 +1,105 @@
+name: 'Setup Environment'
+description: 'Sets up PHP, Node.js, and installs dependencies with caching'
+
+inputs:
+  config_file:
+    description: 'Path to CI configuration file'
+    required: false
+    default: '.github/ci-config.yml'
+  composer_with_dev:
+    description: 'Install dev dependencies (yes/no)'
+    required: false
+    default: 'yes'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Read CI configuration
+      id: config
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.config_file }}" ]; then
+          # Parse YAML configuration (simplified - will be enhanced in implementation)
+          PHP_VERSION=$(grep -A 10 "runtime:" "${{ inputs.config_file }}" | grep "php_version:" | cut -d'"' -f2 || echo "8.1")
+          NODE_VERSION=$(grep -A 10 "runtime:" "${{ inputs.config_file }}" | grep "node_version:" | cut -d'"' -f2 || echo "18")
+          PHP_EXTENSIONS=$(grep -A 10 "runtime:" "${{ inputs.config_file }}" | grep "php_extensions:" | cut -d'"' -f2 || echo "mbstring, intl, gd, xml, zip, curl, opcache")
+        else
+          # Default values
+          PHP_VERSION="8.1"
+          NODE_VERSION="18"
+          PHP_EXTENSIONS="mbstring, intl, gd, xml, zip, curl, opcache"
+        fi
+        
+        echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
+        echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        echo "php_extensions=$PHP_EXTENSIONS" >> $GITHUB_OUTPUT
+        
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ steps.config.outputs.php_version }}
+        extensions: ${{ steps.config.outputs.php_extensions }}
+        coverage: none
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ steps.config.outputs.node_version }}
+        cache: 'npm'
+        
+    - name: Cache Composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.composer/cache
+        key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+        restore-keys: |
+          composer-${{ runner.os }}-
+          
+    - name: Install Composer dependencies
+      shell: bash
+      run: |
+        if [ "${{ inputs.composer_with_dev }}" = "yes" ]; then
+          composer install --prefer-dist --no-progress --no-suggest
+        else
+          composer install --prefer-dist --no-progress --no-suggest --no-dev
+        fi
+        
+    - name: Install NPM dependencies
+      if: hashFiles('package.json') != ''
+      shell: bash
+      run: npm ci
+      
+    - name: Auto-detect project type
+      id: project-type
+      shell: bash
+      run: |
+        if [ -f "shopware-project.yml" ]; then
+          echo "type=shopware" >> $GITHUB_OUTPUT
+        elif [ -f "artisan" ]; then
+          echo "type=laravel" >> $GITHUB_OUTPUT
+        elif [ -f "symfony.lock" ]; then
+          echo "type=symfony" >> $GITHUB_OUTPUT
+        else
+          echo "type=shopware" >> $GITHUB_OUTPUT  # Default to shopware
+        fi
+        
+    - name: Framework-specific setup
+      shell: bash
+      run: |
+        PROJECT_TYPE="${{ steps.project-type.outputs.type }}"
+        echo "Detected project type: $PROJECT_TYPE"
+        
+        case $PROJECT_TYPE in
+          "shopware")
+            echo "Setting up Shopware environment..."
+            # Shopware-specific setup will be added in implementation
+            ;;
+          "laravel")
+            echo "Setting up Laravel environment..."
+            # Laravel-specific setup will be added in implementation
+            ;;
+          "symfony")
+            echo "Setting up Symfony environment..."
+            # Symfony-specific setup will be added in implementation
+            ;;
+        esac

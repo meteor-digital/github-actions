@@ -1,0 +1,67 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (test, acc, prod)'
+        type: string
+        required: true
+      config_path:
+        description: 'Path to deployment configuration file'
+        type: string
+        default: '.github/deployment-config.yml'
+      artifact_name:
+        description: 'Name of the build artifact to deploy'
+        type: string
+        default: 'build-artifact'
+    secrets:
+      ssh_private_key:
+        description: 'SSH private key for deployment'
+        required: true
+      environment_secrets:
+        description: 'Environment-specific secrets (JSON format)'
+        required: true
+      notification_webhook:
+        description: 'Teams/Slack webhook URL for notifications'
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    
+    # Prevent parallel deployments to the same environment
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}-${{ github.sha }}
+          path: ./build
+          
+      - name: Deploy to host
+        uses: ./actions/deploy-to-host
+        with:
+          config_file: ${{ inputs.config_path }}
+          environment: ${{ inputs.environment }}
+          build_path: './build'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.ssh_private_key }}
+          ENVIRONMENT_SECRETS: ${{ secrets.environment_secrets }}
+          
+      - name: Send notification
+        if: always() && secrets.notification_webhook
+        uses: ./actions/notify-teams
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          status: ${{ job.status }}
+          workflow_type: 'deploy'
+          environment: ${{ inputs.environment }}
+          config_file: ${{ inputs.config_path }}

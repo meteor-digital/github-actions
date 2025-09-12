@@ -1,0 +1,172 @@
+name: 'Deploy to Host'
+description: 'Deploys the built project to the target environment'
+
+inputs:
+  config_file:
+    description: 'Path to deployment configuration file'
+    required: false
+    default: '.github/deployment-config.yml'
+  environment:
+    description: 'Target environment'
+    required: true
+  build_path:
+    description: 'Path to built project files'
+    required: false
+    default: '.'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Read deployment configuration
+      id: config
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.config_file }}" ]; then
+          # Parse deployment configuration (simplified - will be enhanced)
+          echo "Reading deployment configuration for environment: ${{ inputs.environment }}"
+          # Configuration parsing will be added in implementation
+        else
+          echo "No deployment configuration found, using defaults"
+        fi
+        
+        # Set default values (will be replaced with actual config parsing)
+        echo "host=example.com" >> $GITHUB_OUTPUT
+        echo "path=/var/www/html" >> $GITHUB_OUTPUT
+        echo "provider=level27" >> $GITHUB_OUTPUT
+        echo "ssh_port=22" >> $GITHUB_OUTPUT
+        echo "php_service=php8.1-fpm" >> $GITHUB_OUTPUT
+        
+    - name: Setup SSH connection
+      shell: bash
+      run: |
+        echo "Setting up SSH connection..."
+        mkdir -p ~/.ssh
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        # Add host to known_hosts
+        ssh-keyscan -p ${{ steps.config.outputs.ssh_port }} ${{ steps.config.outputs.host }} >> ~/.ssh/known_hosts
+        
+    - name: Create release directory
+      shell: bash
+      run: |
+        RELEASE_DIR="releases/$(date +%Y%m%d_%H%M%S)_${{ github.sha }}"
+        echo "release_dir=$RELEASE_DIR" >> $GITHUB_ENV
+        
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          mkdir -p ${{ steps.config.outputs.path }}/$RELEASE_DIR
+        "
+        
+    - name: Sync files to host
+      shell: bash
+      run: |
+        echo "Syncing files to host..."
+        rsync -avz --delete \
+          -e "ssh -p ${{ steps.config.outputs.ssh_port }}" \
+          ${{ inputs.build_path }}/ \
+          user@${{ steps.config.outputs.host }}:${{ steps.config.outputs.path }}/${{ env.release_dir }}/
+          
+    - name: Create shared folder symlinks
+      shell: bash
+      run: |
+        echo "Creating shared folder symlinks..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}/${{ env.release_dir }}
+          
+          # Default shared folders (will be configurable)
+          for folder in files public/media public/sitemap public/thumbnail config/jwt var/log; do
+            if [ -d ../shared/\$folder ]; then
+              rm -rf \$folder
+              ln -sf ../shared/\$folder \$folder
+            fi
+          done
+        "
+        
+    - name: Enable maintenance mode
+      shell: bash
+      run: |
+        echo "Enabling maintenance mode..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}/current
+          touch maintenance.html || true
+        "
+        
+    - name: Stop services
+      shell: bash
+      run: |
+        echo "Stopping services..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          # Stop messenger workers and other services
+          sudo systemctl stop ${{ steps.config.outputs.php_service }} || true
+        "
+        
+    - name: Run database migrations
+      shell: bash
+      run: |
+        echo "Running database migrations..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}/${{ env.release_dir }}
+          bin/console database:migrate --all || true
+        "
+        
+    - name: Switch to new release (atomic deployment)
+      shell: bash
+      run: |
+        echo "Switching to new release..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}
+          ln -sfn ${{ env.release_dir }} current_new
+          mv current_new current
+        "
+        
+    - name: Run post-deployment commands
+      shell: bash
+      run: |
+        echo "Running post-deployment commands..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}/current
+          
+          # Default post-deployment commands (will be configurable)
+          bin/console cache:warmup || true
+          bin/console theme:compile --active-only || true
+        "
+        
+    - name: Restart services
+      shell: bash
+      run: |
+        echo "Restarting services..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          sudo systemctl start ${{ steps.config.outputs.php_service }}
+        "
+        
+    - name: Disable maintenance mode
+      shell: bash
+      run: |
+        echo "Disabling maintenance mode..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}/current
+          rm -f maintenance.html
+        "
+        
+    - name: Cleanup old releases
+      shell: bash
+      run: |
+        echo "Cleaning up old releases..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}/releases
+          ls -t | tail -n +4 | xargs rm -rf || true
+        "
+        
+    - name: Rollback on failure
+      if: failure()
+      shell: bash
+      run: |
+        echo "Deployment failed, attempting rollback..."
+        ssh -p ${{ steps.config.outputs.ssh_port }} user@${{ steps.config.outputs.host }} "
+          cd ${{ steps.config.outputs.path }}
+          if [ -L current_backup ]; then
+            ln -sfn \$(readlink current_backup) current
+            sudo systemctl restart ${{ steps.config.outputs.php_service }}
+            rm -f current/maintenance.html
+          fi
+        " || true

@@ -1,0 +1,30 @@
+# Example CI configuration for Shopware projects
+project:
+  name: "shopware-webshop"
+  
+runtime:
+  php_version: "8.1"
+  node_version: "18"
+  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
+  
+build:
+  exclude_patterns: |
+    *.git*
+    node_modules/*
+    tests/*
+    .env*
+    .env.local*
+    var/cache/*
+    var/log/*
+    public/bundles/*
+    public/css/*
+    public/js/*
+    public/theme/*
+    *.log
+  build_commands:
+    - "npm run build"
+    - "composer install --no-dev --optimize-autoloader"
+  
+artifacts:
+  retention_days: 7
+  naming_pattern: "{environment}-build-{version}"

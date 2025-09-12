@@ -1,0 +1,60 @@
+# Example deploy workflow for Shopware projects
+# This file demonstrates how to reference the reusable deploy workflow
+# Replace 'meteor-digital/github-actions' with your actual workflows repository
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Build Artifact"]
+    types: [completed]
+    branches: 
+      - 'test/*'
+      - 'release/[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - test
+          - acc
+          - prod
+
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      should_deploy: ${{ steps.env.outputs.should_deploy }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/heads/test/* ]]; then
+            echo "environment=test" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" =~ refs/heads/release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "environment=acc" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: determine-environment
+    if: needs.determine-environment.outputs.should_deploy == 'true'
+    uses: meteor-digital/github-actions/.github/workflows/deploy.yml@main
+    with:
+      environment: ${{ needs.determine-environment.outputs.environment }}
+      config_path: ".github/deployment-config.yml"
+      artifact_name: "build-artifact"
+    secrets:
+      ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      environment_secrets: ${{ secrets.ENVIRONMENT_SECRETS }}
+      notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}

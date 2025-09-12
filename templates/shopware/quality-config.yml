@@ -1,0 +1,20 @@
+# Example quality configuration for Shopware projects
+quality_checks:
+  enabled_tools:
+    - "php-cs-fixer"
+    - "psalm"
+    - "phpstan"
+    - "rector"
+    - "phpunit"
+    - "composer-validate"
+    
+  custom_checks:
+    - name: "phpunuhi"
+      command: "php ./vendor/bin/phpunuhi validate:all"
+    - name: "security-audit"
+      command: "composer audit"
+      
+notifications:
+  teams:
+    webhook_secret: "CHAT_WEB_HOOK"
+    timezone: "Europe/Amsterdam"
