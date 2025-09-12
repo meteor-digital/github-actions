@@ -10,96 +10,232 @@ inputs:
     description: 'Install dev dependencies (yes/no)'
     required: false
     default: 'yes'
+  composer_auth:
+    description: 'Composer authentication JSON'
+    required: false
+    default: '{}'
+  node_skip_setup:
+    description: 'Whether to skip Node.js setup'
+    required: false
+    default: 'false'
+
+outputs:
+  php_version:
+    description: 'PHP version that was configured'
+    value: ${{ steps.config.outputs.php_version }}
+  node_version:
+    description: 'Node.js version that was configured'
+    value: ${{ steps.config.outputs.node_version }}
+  project_type:
+    description: 'Detected project type (shopware, laravel, symfony)'
+    value: ${{ steps.project-type.outputs.type }}
+  cache_hit:
+    description: 'Whether dependencies were restored from cache'
+    value: ${{ steps.cache-deps.outputs.cache-hit }}
 
 runs:
   using: 'composite'
   steps:
+    - name: Auto-detect project type
+      id: project-type
+      shell: bash
+      run: |
+        echo "🔍 Auto-detecting project type..."
+        if [ -f "shopware-project.yml" ]; then
+          echo "✅ Found shopware-project.yml - Shopware project detected"
+          echo "type=shopware" >> $GITHUB_OUTPUT
+        elif [ -f "artisan" ]; then
+          echo "✅ Found artisan file - Laravel project detected"
+          echo "type=laravel" >> $GITHUB_OUTPUT
+        elif [ -f "symfony.lock" ]; then
+          echo "✅ Found symfony.lock - Symfony project detected"
+          echo "type=symfony" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️  No specific project files found - defaulting to Shopware"
+          echo "type=shopware" >> $GITHUB_OUTPUT
+        fi
+
     - name: Read CI configuration
       id: config
       shell: bash
       run: |
-        if [ -f "${{ inputs.config_file }}" ]; then
-          # Parse YAML configuration (simplified - will be enhanced in implementation)
-          PHP_VERSION=$(grep -A 10 "runtime:" "${{ inputs.config_file }}" | grep "php_version:" | cut -d'"' -f2 || echo "8.1")
-          NODE_VERSION=$(grep -A 10 "runtime:" "${{ inputs.config_file }}" | grep "node_version:" | cut -d'"' -f2 || echo "18")
-          PHP_EXTENSIONS=$(grep -A 10 "runtime:" "${{ inputs.config_file }}" | grep "php_extensions:" | cut -d'"' -f2 || echo "mbstring, intl, gd, xml, zip, curl, opcache")
-        else
-          # Default values
-          PHP_VERSION="8.1"
-          NODE_VERSION="18"
-          PHP_EXTENSIONS="mbstring, intl, gd, xml, zip, curl, opcache"
+        CONFIG_FILE="${{ inputs.config_file }}"
+        PROJECT_TYPE="${{ steps.project-type.outputs.type }}"
+        
+        echo "📋 Reading configuration from: $CONFIG_FILE"
+        echo "🎯 Project type: $PROJECT_TYPE"
+        
+        if [ ! -f "$CONFIG_FILE" ]; then
+          echo "❌ Configuration file not found: $CONFIG_FILE"
+          echo "💡 Please create a configuration file with runtime settings:"
+          echo "   runtime:"
+          echo "     php_version: \"8.1\""
+          echo "     node_version: \"18\""
+          echo "     php_extensions: \"mbstring, intl, gd, xml, zip, curl, opcache\""
+          exit 1
         fi
+        
+        echo "✅ Configuration file found, parsing..."
+        
+        # Parse YAML using yq if available, otherwise use grep/sed
+        if command -v yq >/dev/null 2>&1; then
+          echo "📦 Using yq for YAML parsing"
+          PHP_VERSION=$(yq eval '.runtime.php_version' "$CONFIG_FILE" 2>/dev/null)
+          NODE_VERSION=$(yq eval '.runtime.node_version' "$CONFIG_FILE" 2>/dev/null)
+          PHP_EXTENSIONS=$(yq eval '.runtime.php_extensions' "$CONFIG_FILE" 2>/dev/null)
+        else
+          echo "📝 Using grep/sed for YAML parsing"
+          # Improved YAML parsing with better regex patterns
+          PHP_VERSION=$(grep -A 20 "^runtime:" "$CONFIG_FILE" | grep "^\s*php_version:" | sed 's/.*php_version:\s*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+          NODE_VERSION=$(grep -A 20 "^runtime:" "$CONFIG_FILE" | grep "^\s*node_version:" | sed 's/.*node_version:\s*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+          PHP_EXTENSIONS=$(grep -A 20 "^runtime:" "$CONFIG_FILE" | grep "^\s*php_extensions:" | sed 's/.*php_extensions:\s*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+        fi
+        
+        # Validate required configuration values
+        if [ -z "$PHP_VERSION" ] || [ "$PHP_VERSION" = "null" ]; then
+          echo "❌ PHP version not specified in configuration"
+          echo "💡 Please add: runtime.php_version: \"8.1\" to your $CONFIG_FILE"
+          exit 1
+        fi
+        
+        if [ -z "$NODE_VERSION" ] || [ "$NODE_VERSION" = "null" ]; then
+          echo "❌ Node version not specified in configuration"
+          echo "💡 Please add: runtime.node_version: \"18\" to your $CONFIG_FILE"
+          exit 1
+        fi
+        
+        if [ -z "$PHP_EXTENSIONS" ] || [ "$PHP_EXTENSIONS" = "null" ]; then
+          echo "❌ PHP extensions not specified in configuration"
+          echo "💡 Please add: runtime.php_extensions: \"mbstring, intl, gd, xml, zip, curl, opcache\" to your $CONFIG_FILE"
+          exit 1
+        fi
+        
+        echo "🐘 PHP Version: $PHP_VERSION"
+        echo "🟢 Node Version: $NODE_VERSION"
+        echo "🔧 PHP Extensions: $PHP_EXTENSIONS"
         
         echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
         echo "node_version=$NODE_VERSION" >> $GITHUB_OUTPUT
         echo "php_extensions=$PHP_EXTENSIONS" >> $GITHUB_OUTPUT
-        
+
+    - name: Generate cache key
+      id: cache-key-gen
+      shell: bash
+      run: |
+        DEV_SUFFIX=""
+        if [[ "${{ inputs.composer_with_dev }}" == "no" ]]; then
+          DEV_SUFFIX="-nodev"
+        fi
+        COMPOSER_HASH="${{ hashFiles('composer.json', 'composer.lock') }}"
+        NODE_HASH="${{ hashFiles('package.json', 'package-lock.json') }}"
+        echo "key=deps-${COMPOSER_HASH}-${NODE_HASH}${DEV_SUFFIX}" >> $GITHUB_OUTPUT
+        echo "📋 Generated cache key: deps-${COMPOSER_HASH}-${NODE_HASH}${DEV_SUFFIX}"
+
+    - name: Restore cached dependencies
+      uses: actions/cache/restore@v4
+      id: cache-deps
+      with:
+        path: |
+          vendor
+          node_modules
+          ~/.composer/cache
+          ~/.npm
+        key: ${{ steps.cache-key-gen.outputs.key }}
+
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ steps.config.outputs.php_version }}
         extensions: ${{ steps.config.outputs.php_extensions }}
+        tools: composer:v2
         coverage: none
-        
+
     - name: Setup Node.js
+      if: inputs.node_skip_setup != 'true'
       uses: actions/setup-node@v4
       with:
         node-version: ${{ steps.config.outputs.node_version }}
         cache: 'npm'
-        
-    - name: Cache Composer dependencies
-      uses: actions/cache@v3
+
+    - name: Install dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: ../composer-setup
       with:
-        path: ~/.composer/cache
-        key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-        restore-keys: |
-          composer-${{ runner.os }}-
-          
-    - name: Install Composer dependencies
-      shell: bash
-      run: |
-        if [ "${{ inputs.composer_with_dev }}" = "yes" ]; then
-          composer install --prefer-dist --no-progress --no-suggest
-        else
-          composer install --prefer-dist --no-progress --no-suggest --no-dev
-        fi
-        
-    - name: Install NPM dependencies
-      if: hashFiles('package.json') != ''
-      shell: bash
-      run: npm ci
-      
-    - name: Auto-detect project type
-      id: project-type
-      shell: bash
-      run: |
-        if [ -f "shopware-project.yml" ]; then
-          echo "type=shopware" >> $GITHUB_OUTPUT
-        elif [ -f "artisan" ]; then
-          echo "type=laravel" >> $GITHUB_OUTPUT
-        elif [ -f "symfony.lock" ]; then
-          echo "type=symfony" >> $GITHUB_OUTPUT
-        else
-          echo "type=shopware" >> $GITHUB_OUTPUT  # Default to shopware
-        fi
-        
+        args: '--prefer-dist --no-progress --no-interaction --optimize-autoloader'
+        with_dev: ${{ inputs.composer_with_dev }}
+      env:
+        COMPOSER_AUTH: ${{ inputs.composer_auth }}
+
+    - name: Save dependency caches early
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          vendor
+          node_modules
+          ~/.composer/cache
+          ~/.npm
+        key: ${{ steps.cache-key-gen.outputs.key }}
+
     - name: Framework-specific setup
       shell: bash
       run: |
         PROJECT_TYPE="${{ steps.project-type.outputs.type }}"
-        echo "Detected project type: $PROJECT_TYPE"
+        echo "🎯 Running framework-specific setup for: $PROJECT_TYPE"
         
         case $PROJECT_TYPE in
           "shopware")
-            echo "Setting up Shopware environment..."
-            # Shopware-specific setup will be added in implementation
+            echo "🛍️  Setting up Shopware environment..."
+            
+            # Verify Shopware project structure
+            if [ -f "shopware-project.yml" ]; then
+              echo "✅ Shopware project configuration found"
+            fi
+            
+            # Check for required Shopware directories
+            [ -d "config" ] && echo "✅ Config directory found" || echo "⚠️  Config directory not found"
+            [ -d "public" ] && echo "✅ Public directory found" || echo "⚠️  Public directory not found"
+            [ -d "src" ] && echo "✅ Source directory found" || echo "⚠️  Source directory not found"
+            
+            # Shopware CLI will be installed by build-project action when needed
+            echo "🔧 Shopware environment setup complete"
             ;;
+            
           "laravel")
-            echo "Setting up Laravel environment..."
-            # Laravel-specific setup will be added in implementation
+            echo "🅰️  Setting up Laravel environment..."
+            
+            # Verify Laravel project structure
+            if [ -f "artisan" ]; then
+              echo "✅ Laravel artisan command found"
+            fi
+            
+            # Check for required Laravel directories
+            [ -d "app" ] && echo "✅ App directory found" || echo "⚠️  App directory not found"
+            [ -d "config" ] && echo "✅ Config directory found" || echo "⚠️  Config directory not found"
+            [ -d "resources" ] && echo "✅ Resources directory found" || echo "⚠️  Resources directory not found"
+            
+            echo "🔧 Laravel environment setup complete"
             ;;
+            
           "symfony")
-            echo "Setting up Symfony environment..."
-            # Symfony-specific setup will be added in implementation
+            echo "🎼 Setting up Symfony environment..."
+            
+            # Verify Symfony project structure
+            if [ -f "symfony.lock" ]; then
+              echo "✅ Symfony lock file found"
+            fi
+            
+            # Check for required Symfony directories
+            [ -d "src" ] && echo "✅ Source directory found" || echo "⚠️  Source directory not found"
+            [ -d "config" ] && echo "✅ Config directory found" || echo "⚠️  Config directory not found"
+            [ -f "bin/console" ] && echo "✅ Symfony console found" || echo "⚠️  Symfony console not found"
+            
+            echo "🔧 Symfony environment setup complete"
+            ;;
+            
+          *)
+            echo "🔧 Generic project setup complete"
             ;;
         esac
+        
+        echo "🎉 Environment setup completed successfully!"

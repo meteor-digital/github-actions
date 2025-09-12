@@ -1,0 +1,44 @@
+name: 'Install Composer Dependencies'
+description: 'Installs Composer dependencies with optimized caching strategy'
+
+inputs:
+  args:
+    description: 'The arguments for the composer install command'
+    required: false
+    default: '--prefer-dist --no-scripts'
+  with_dev:
+    description: 'Whether to install dev dependencies (yes/no)'
+    required: false
+    default: 'yes'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cache vendor directory
+      id: cache-vendor
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: ${{ runner.os }}-vendor-${{ hashFiles('**/composer.lock') }}-dev-${{ inputs.with_dev }}
+        restore-keys: |
+          ${{ runner.os }}-vendor-${{ hashFiles('**/composer.lock') }}-
+          ${{ runner.os }}-vendor-
+
+    - name: Cache Composer cache directory
+      if: steps.cache-vendor.outputs.cache-hit != 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.composer/cache
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-composer-
+
+    - name: Install dependencies
+      if: steps.cache-vendor.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if [[ "${{ inputs.with_dev }}" == "no" ]]; then
+          composer install ${{ inputs.args }} --no-dev
+        else
+          composer install ${{ inputs.args }}
+        fi
