@@ -62,8 +62,8 @@ if [ -d "$WORKFLOW_DIR" ]; then
     WORKFLOW_FILES=("$WORKFLOW_DIR"/*.yml)
     if [ -f "${WORKFLOW_FILES[0]}" ]; then
         for workflow in "${WORKFLOW_FILES[@]}"; do
-            if grep -q "uses:.*/.github/workflows/" "$workflow"; then
-                REPO_REF=$(grep "uses:.*/.github/workflows/" "$workflow" | head -1 | sed 's/.*uses: *\([^/]*\/[^/]*\)\/.*/\1/')
+            if grep -q "uses:.*/workflows/" "$workflow"; then
+                REPO_REF=$(grep "uses:.*/workflows/" "$workflow" | head -1 | sed 's/.*uses: *\([^/]*\/[^/]*\)\/.*/\1/')
                 echo "  ✅ $(basename "$workflow") - References $REPO_REF"
             else
                 echo "  ⚠️  $(basename "$workflow") - No reusable workflow reference found"

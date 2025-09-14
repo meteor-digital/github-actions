@@ -1,146 +1,31 @@
 name: 'Notify Teams'
-description: 'Sends notifications to Teams/Slack channels with deployment status'
+description: 'Sends a message to Teams/Slack channels'
 
 inputs:
   webhook_url:
     description: 'Teams/Slack webhook URL'
     required: true
-  status:
-    description: 'Workflow status (success, failure, cancelled)'
+  message:
+    description: 'Message content to send'
     required: true
-  workflow_type:
-    description: 'Type of workflow (build, deploy, quality-checks)'
-    required: true
-  environment:
-    description: 'Target environment (for deploy workflows)'
+  color:
+    description: 'Message color (hex code without #, e.g., FF0000 for red)'
     required: false
-  config_file:
-    description: 'Path to configuration file for project name'
+    default: '808080'
+  timezone:
+    description: 'Timezone for timestamps'
     required: false
-    default: '.github/ci-config.yml'
+    default: 'Europe/Amsterdam'
 
 runs:
   using: 'composite'
   steps:
-    - name: Read project configuration
-      id: config
-      shell: bash
-      run: |
-        if [ -f "${{ inputs.config_file }}" ]; then
-          PROJECT_NAME=$(grep -A 5 "project:" "${{ inputs.config_file }}" | grep "name:" | cut -d'"' -f2 || echo "${{ github.event.repository.name }}")
-        else
-          PROJECT_NAME="${{ github.event.repository.name }}"
-        fi
-        echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
-        
-    - name: Set notification color
-      id: color
-      shell: bash
-      run: |
-        case "${{ inputs.status }}" in
-          "success")
-            echo "color=00FF00" >> $GITHUB_OUTPUT
-            echo "emoji=✅" >> $GITHUB_OUTPUT
-            ;;
-          "failure")
-            echo "color=FF0000" >> $GITHUB_OUTPUT
-            echo "emoji=❌" >> $GITHUB_OUTPUT
-            ;;
-          "cancelled")
-            echo "color=FFA500" >> $GITHUB_OUTPUT
-            echo "emoji=⚠️" >> $GITHUB_OUTPUT
-            ;;
-          *)
-            echo "color=808080" >> $GITHUB_OUTPUT
-            echo "emoji=ℹ️" >> $GITHUB_OUTPUT
-            ;;
-        esac
-        
-    - name: Create notification message
-      id: message
-      shell: bash
-      run: |
-        WORKFLOW_TYPE="${{ inputs.workflow_type }}"
-        STATUS="${{ inputs.status }}"
-        PROJECT_NAME="${{ steps.config.outputs.project_name }}"
-        EMOJI="${{ steps.color.outputs.emoji }}"
-        
-        case "$WORKFLOW_TYPE" in
-          "build")
-            TITLE="Build $STATUS"
-            MESSAGE="$EMOJI Build for **$PROJECT_NAME** $STATUS"
-            ;;
-          "deploy")
-            ENV="${{ inputs.environment }}"
-            TITLE="Deploy $STATUS"
-            MESSAGE="$EMOJI Deploy **$PROJECT_NAME** to **$ENV** $STATUS"
-            ;;
-          "quality-checks")
-            TITLE="Quality Checks $STATUS"
-            MESSAGE="$EMOJI Quality checks for **$PROJECT_NAME** $STATUS"
-            ;;
-          *)
-            TITLE="Workflow $STATUS"
-            MESSAGE="$EMOJI Workflow for **$PROJECT_NAME** $STATUS"
-            ;;
-        esac
-        
-        echo "title=$TITLE" >> $GITHUB_OUTPUT
-        echo "message=$MESSAGE" >> $GITHUB_OUTPUT
-        
     - name: Send Teams notification
-      shell: bash
-      run: |
-        TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        
-        # Create Teams message payload
-        cat > notification.json << EOF
-        {
-          "@type": "MessageCard",
-          "@context": "https://schema.org/extensions",
-          "summary": "${{ steps.message.outputs.title }}",
-          "themeColor": "${{ steps.color.outputs.color }}",
-          "sections": [
-            {
-              "activityTitle": "${{ steps.message.outputs.title }}",
-              "activitySubtitle": "${{ steps.message.outputs.message }}",
-              "facts": [
-                {
-                  "name": "Repository",
-                  "value": "${{ github.repository }}"
-                },
-                {
-                  "name": "Branch/Tag",
-                  "value": "${{ github.ref_name }}"
-                },
-                {
-                  "name": "Commit",
-                  "value": "${{ github.sha }}"
-                },
-                {
-                  "name": "Timestamp",
-                  "value": "$TIMESTAMP"
-                }
-              ]
-            }
-          ],
-          "potentialAction": [
-            {
-              "@type": "OpenUri",
-              "name": "View Workflow",
-              "targets": [
-                {
-                  "os": "default",
-                  "uri": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                }
-              ]
-            }
-          ]
-        }
-        EOF
-        
-        # Send notification
-        curl -X POST \
-          -H "Content-Type: application/json" \
-          -d @notification.json \
-          "${{ inputs.webhook_url }}"
+      uses: jdcargile/ms-teams-notification@v1.4
+      with:
+        github-token: ${{ github.token }}
+        ms-teams-webhook-uri: ${{ inputs.webhook_url }}
+        notification-summary: ${{ inputs.message }}
+        notification-color: ${{ inputs.color }}
+        timezone: ${{ inputs.timezone }}
+        verbose-logging: false

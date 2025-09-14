@@ -49,7 +49,7 @@ jobs:
   deploy:
     needs: determine-environment
     if: needs.determine-environment.outputs.should_deploy == 'true'
-    uses: meteor-digital/github-actions/.github/workflows/deploy.yml@main
+    uses: meteor-digital/github-actions/workflows/deploy.yml@main
     with:
       environment: ${{ needs.determine-environment.outputs.environment }}
       config_path: ".github/deployment-config.yml"

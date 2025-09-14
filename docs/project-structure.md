@@ -11,7 +11,8 @@ generic-ci-cd-workflows/
 │       ├── build-artifact.yml       # Generic build workflow
 │       ├── deploy.yml               # Generic deployment workflow
 │       ├── quality-checks.yml       # Generic quality checks workflow
-│       └── pr-checks.yml            # Generic PR validation workflow
+│       ├── pr-checks.yml            # Generic PR validation workflow
+│       └── verify-release-next.yml  # Generic release branch validation workflow
 ├── actions/                         # Composite actions
 │   ├── setup-environment/          # Environment setup action
 │   │   └── action.yml
@@ -43,7 +44,7 @@ generic-ci-cd-workflows/
 
 ## Reusable Workflows
 
-### `.github/workflows/`
+### `workflows/`
 
 Contains the main reusable workflow templates that projects can consume:
 
@@ -51,8 +52,9 @@ Contains the main reusable workflow templates that projects can consume:
 - **deploy.yml**: Deploys built artifacts to configured environments
 - **quality-checks.yml**: Runs code quality tools and tests
 - **pr-checks.yml**: Fast feedback for pull request validation
+- **verify-release-next.yml**: Scheduled validation of release branches with comprehensive quality checks
 
-These workflows are consumed by projects using GitHub's `uses: org/repo/.github/workflows/workflow.yml@ref` syntax.
+These workflows are consumed by projects using GitHub's `uses: org/repo/workflows/workflow.yml@ref` syntax.
 
 ## Composite Actions
 
@@ -164,7 +166,7 @@ Projects integrate with these workflows by:
 # Project's .github/workflows/build.yml
 jobs:
   build:
-    uses: org/generic-ci-cd-workflows/.github/workflows/build-artifact.yml@main
+    uses: org/generic-ci-cd-workflows/workflows/build-artifact.yml@main
     with:
       config_path: ".github/ci-config.yml"
     secrets:

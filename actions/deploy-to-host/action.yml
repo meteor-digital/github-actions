@@ -36,11 +36,11 @@ runs:
   steps:
     - name: Detect project type
       id: project_type
-      uses: ../detect-project-type
+      uses: meteor-digital/github-actions/actions/detect-project-type@main
 
     - name: Parse deployment configuration
       id: config
-      uses: ../parse-deployment-config
+      uses: meteor-digital/github-actions/actions/parse-deployment-config@main
       with:
         config_file: ${{ inputs.config_file }}
         environment: ${{ inputs.environment }}
@@ -48,7 +48,7 @@ runs:
 
     - name: Setup deployment environment
       id: setup
-      uses: ../setup-deployment
+      uses: meteor-digital/github-actions/actions/setup-deployment@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -66,7 +66,7 @@ runs:
         remote_key: ${{ inputs.ssh_private_key }}
 
     - name: Create shared folder symlinks
-      uses: ../create-symlinks
+      uses: meteor-digital/github-actions/actions/create-symlinks@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -77,7 +77,7 @@ runs:
 
     - name: Run pre-deployment commands
       if: steps.config.outputs.pre_deploy_commands != ''
-      uses: ../run-commands-on-host
+      uses: meteor-digital/github-actions/actions/run-commands-on-host@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -88,7 +88,7 @@ runs:
 
     - name: Enable maintenance mode
       if: steps.config.outputs.maintenance_mode == 'true'
-      uses: ../run-commands-on-host
+      uses: meteor-digital/github-actions/actions/run-commands-on-host@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -98,7 +98,7 @@ runs:
         description: 'maintenance mode (enable)'
 
     - name: Stop Services
-      uses: ../manage-services
+      uses: meteor-digital/github-actions/actions/manage-services@main
       with:
         action: stop
         host: ${{ steps.config.outputs.host }}
@@ -110,7 +110,7 @@ runs:
         messenger_worker_id: ${{ steps.config.outputs.messenger_worker_id }}
 
     - name: Run database migrations
-      uses: ../run-commands-on-host
+      uses: meteor-digital/github-actions/actions/run-commands-on-host@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -120,7 +120,7 @@ runs:
         description: 'database migrations'
 
     - name: Activate new release
-      uses: ../activate-release
+      uses: meteor-digital/github-actions/actions/activate-release@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -129,7 +129,7 @@ runs:
         deploy_date: ${{ steps.setup.outputs.deploy_date }}
 
     - name: Run post-deployment commands
-      uses: ../run-commands-on-host
+      uses: meteor-digital/github-actions/actions/run-commands-on-host@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -140,7 +140,7 @@ runs:
         fail_on_error: 'false'
 
     - name: Restart Services
-      uses: ../manage-services
+      uses: meteor-digital/github-actions/actions/manage-services@main
       with:
         action: restart
         host: ${{ steps.config.outputs.host }}
@@ -153,7 +153,7 @@ runs:
 
     - name: Disable maintenance mode
       if: steps.config.outputs.maintenance_mode == 'true'
-      uses: ../run-commands-on-host
+      uses: meteor-digital/github-actions/actions/run-commands-on-host@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
@@ -163,7 +163,7 @@ runs:
         description: 'maintenance mode (disable)'
 
     - name: Cleanup old releases
-      uses: ../cleanup-releases
+      uses: meteor-digital/github-actions/actions/cleanup-releases@main
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}

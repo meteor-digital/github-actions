@@ -1,0 +1,65 @@
+name: PR Checks
+
+on:
+  workflow_call:
+    inputs:
+      config_path:
+        description: 'Path to quality configuration file'
+        type: string
+        default: '.github/quality-config.yml'
+    secrets:
+      composer_auth:
+        description: 'Composer authentication JSON'
+        required: true
+
+# Prevent multiple PR checks from running simultaneously for the same PR
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-config:
+    name: 'Validate configuration'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for configuration file changes
+        id: check_config
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            .github/*-config.yml
+
+      - name: Validate configuration files
+        if: steps.check_config.outputs.any_changed == 'true'
+        shell: bash
+        run: |
+          echo "🔧 Configuration files changed, validating..."
+          echo "Changed files: ${{ steps.check_config.outputs.all_changed_files }}"
+          
+          # Basic YAML syntax validation for all config files
+          for file in ${{ steps.check_config.outputs.all_changed_files }}; do
+            if [ -f "$file" ]; then
+              echo "📋 Validating: $file"
+              if command -v yq >/dev/null 2>&1; then
+                yq eval '.' "$file" > /dev/null
+                echo "✅ $file syntax is valid"
+              else
+                echo "⚠️  yq not available, skipping detailed validation"
+              fi
+            fi
+          done
+
+  quality-checks:
+    name: 'Quality checks'
+    uses: meteor-digital/github-actions/workflows/quality-checks.yml@main
+    with:
+      config_path: ${{ inputs.config_path }}
+      check_changed_files_only: true
+      run_slow_testsuites: false
+    secrets:
+      composer_auth: ${{ secrets.composer_auth }}

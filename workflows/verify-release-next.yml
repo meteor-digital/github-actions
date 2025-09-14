@@ -1,0 +1,172 @@
+name: Verify Release Next
+
+on:
+  workflow_call:
+    inputs:
+      branch_name:
+        description: 'Branch to validate (e.g., release/next)'
+        type: string
+        default: 'release/next'
+      config_path:
+        description: 'Path to quality configuration file'
+        type: string
+        default: '.github/quality-config.yml'
+      schedule_timezone:
+        description: 'Timezone for schedule notifications'
+        type: string
+        default: 'Europe/Brussels'
+    secrets:
+      composer_auth:
+        description: 'Composer authentication JSON'
+        required: true
+      notification_webhook:
+        description: 'Teams/Slack webhook URL for notifications'
+        required: false
+
+# Prevent multiple verify-release-next workflows from running simultaneously
+concurrency:
+  group: verify-release-next-${{ inputs.branch_name }}
+  cancel-in-progress: true
+
+jobs:
+  check-commit-changes:
+    name: '🔍 Check for new commits'
+    runs-on: ubuntu-latest
+    outputs:
+      should_validate: ${{ steps.check_status.outputs.should_validate }}
+      commit_sha: ${{ steps.get_commit.outputs.commit_sha }}
+      commit_message: ${{ steps.get_commit.outputs.commit_message }}
+      commit_author: ${{ steps.get_commit.outputs.commit_author }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_name }}
+          fetch-depth: 2
+
+      - name: Get latest commit info
+        id: get_commit
+        shell: bash
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')
+          COMMIT_AUTHOR=$(git log -1 --pretty=format:'%an')
+          
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "commit_message=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+          echo "commit_author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          
+          echo "📋 Latest commit: $COMMIT_SHA"
+          echo "📝 Message: $COMMIT_MESSAGE"
+          echo "👤 Author: $COMMIT_AUTHOR"
+
+      - name: Check commit status
+        id: check_status
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMIT_SHA="${{ steps.get_commit.outputs.commit_sha }}"
+          
+          echo "🔍 Checking commit status for: $COMMIT_SHA"
+          
+          # Check if this commit already has a successful verify-release-next status
+          STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/$COMMIT_SHA/status")
+          
+          # Check if we have a successful verify-release-next status
+          SUCCESS_COUNT=$(echo "$STATUS_RESPONSE" | jq -r '.statuses[] | select(.context == "verify-release-next" and .state == "success") | .context' | wc -l)
+          
+          if [ "$SUCCESS_COUNT" -gt 0 ]; then
+            echo "✅ Commit already validated successfully, skipping"
+            echo "should_validate=false" >> $GITHUB_OUTPUT
+          else
+            echo "🔄 Commit needs validation"
+            echo "should_validate=true" >> $GITHUB_OUTPUT
+          fi
+
+  quality-checks:
+    name: '🔍 Comprehensive Quality Validation'
+    needs: check-commit-changes
+    if: needs.check-commit-changes.outputs.should_validate == 'true'
+    uses: meteor-digital/github-actions/workflows/quality-checks.yml@main
+    with:
+      config_path: ${{ inputs.config_path }}
+      check_changed_files_only: false
+      run_slow_testsuites: true
+    secrets:
+      composer_auth: ${{ secrets.composer_auth }}
+
+  update-commit-status:
+    name: '📊 Update commit status'
+    needs: [check-commit-changes, quality-checks]
+    runs-on: ubuntu-latest
+    if: always() && needs.check-commit-changes.outputs.should_validate == 'true'
+    
+    steps:
+      - name: Update commit status
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMIT_SHA="${{ needs.check-commit-changes.outputs.commit_sha }}"
+          
+          # Determine status based on quality-checks result
+          if [ "${{ needs.quality-checks.result }}" = "success" ]; then
+            STATE="success"
+            DESCRIPTION="All quality checks passed"
+          elif [ "${{ needs.quality-checks.result }}" = "failure" ]; then
+            STATE="failure"
+            DESCRIPTION="Quality checks failed"
+          elif [ "${{ needs.quality-checks.result }}" = "cancelled" ]; then
+            STATE="error"
+            DESCRIPTION="Quality checks were cancelled"
+          else
+            STATE="error"
+            DESCRIPTION="Quality checks encountered an error"
+          fi
+          
+          echo "📊 Updating commit status: $STATE - $DESCRIPTION"
+          
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/statuses/$COMMIT_SHA" \
+            -d "{
+              \"state\": \"$STATE\",
+              \"description\": \"$DESCRIPTION\",
+              \"context\": \"verify-release-next\",
+              \"target_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+            }"
+
+  send-notification:
+    name: '📢 Send failure notification'
+    needs: [check-commit-changes, quality-checks]
+    runs-on: ubuntu-latest
+    if: always() && needs.check-commit-changes.outputs.should_validate == 'true' && needs.quality-checks.result == 'failure' && secrets.notification_webhook != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read CI configuration for project name
+        id: ci_config
+        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        with:
+          config_file: '.github/ci-config.yml'
+
+      - name: Send Teams notification
+        uses: meteor-digital/github-actions/actions/notify-teams@main
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          color: "FF0000"
+          timezone: ${{ inputs.schedule_timezone }}
+          message: |
+            🚨 **${{ steps.ci_config.outputs.project_name }}** release branch validation failed!
+            
+            **Branch:** ${{ inputs.branch_name }}
+            **Commit:** [`${{ needs.check-commit-changes.outputs.commit_sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ needs.check-commit-changes.outputs.commit_sha }}) by ${{ needs.check-commit-changes.outputs.commit_author }}
+            **Message:** ${{ needs.check-commit-changes.outputs.commit_message }}
+            
+            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

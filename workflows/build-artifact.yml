@@ -1,0 +1,156 @@
+name: Build Artifact
+
+on:
+  workflow_call:
+    inputs:
+      config_path:
+        description: 'Path to CI configuration file'
+        type: string
+        default: '.github/ci-config.yml'
+      build_type:
+        description: 'Build type (development, production)'
+        type: string
+        default: 'production'
+    secrets:
+      composer_auth:
+        description: 'Composer authentication JSON'
+        required: true
+      notification_webhook:
+        description: 'Teams/Slack webhook URL for notifications'
+        required: false
+
+jobs:
+  setup:
+    name: 'Prepare artifact build'
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.determine_artifact_name.outputs.artifact_name }}
+      project_name: ${{ steps.config.outputs.project_name }}
+      retention_days: ${{ steps.config.outputs.retention_days }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read configuration
+        id: config
+        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        with:
+          config_file: ${{ inputs.config_path }}
+
+      - name: Determine artifact name based on branch or tag
+        id: determine_artifact_name
+        shell: bash
+        run: |
+          PROJECT_NAME="${{ steps.config.outputs.project_name }}"
+          
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Tag push - PROD build
+            TAG_NAME="${{ github.ref_name }}"
+            echo "artifact_name=${PROJECT_NAME}-prod-build-${TAG_NAME}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" =~ ^release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Release branch - ACC build
+            VERSION=$(echo "${{ github.ref_name }}" | sed 's/release\///')
+            echo "artifact_name=${PROJECT_NAME}-acc-build-${VERSION}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" =~ ^test/ ]]; then
+            # Test branch - TEST build
+            echo "artifact_name=${PROJECT_NAME}-test-build" >> $GITHUB_OUTPUT
+          else
+            # Default build
+            echo "artifact_name=${PROJECT_NAME}-build-${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+  quality-checks:
+    name: 'Quality checks'
+    needs: [setup]
+    uses: meteor-digital/github-actions/workflows/quality-checks.yml@main
+    with:
+      config_path: '.github/quality-config.yml'
+      check_changed_files_only: false
+      run_slow_testsuites: true
+    secrets:
+      composer_auth: ${{ secrets.composer_auth }}
+
+  build:
+    name: 'Build artifact'
+    needs: [setup]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: ${{ inputs.config_path }}
+          composer_with_dev: ${{ inputs.build_type == 'development' && 'yes' || 'no' }}
+          composer_auth: ${{ secrets.composer_auth }}
+          
+      - name: Build project
+        uses: meteor-digital/github-actions/actions/build-project@main
+        with:
+          config_file: ${{ inputs.config_path }}
+          
+      - name: Upload artifact with permission preservation
+        uses: pyTooling/upload-artifact@v4
+        with:
+          name: ${{ needs.setup.outputs.artifact_name }}
+          path: .
+          include-hidden-files: true
+          retention-days: ${{ needs.setup.outputs.retention_days || 7 }}
+          
+      - name: Create build archive for release
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          # Create release tar.gz from cleaned workspace (preserves Unix permissions)
+          tar --warning=no-file-changed -czpf build-${{ github.ref_name }}.tar.gz .
+          
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build-${{ github.ref_name }}.tar.gz
+          tag_name: ${{ github.ref_name }}
+          name: ${{ needs.setup.outputs.project_name }} Release ${{ github.ref_name }}
+          body: |
+            ## 🚀 Production Release ${{ github.ref_name }}
+            
+            **Build Information:**
+            - Project: ${{ needs.setup.outputs.project_name }}
+            - Commit: ${{ github.sha }}
+            - Build Date: ${{ github.event.head_commit.timestamp }}
+            - Workflow: ${{ github.workflow }} #${{ github.run_number }}
+            
+            **Artifact:** ${{ needs.setup.outputs.artifact_name }}
+          draft: false
+          prerelease: false
+          
+      - name: Send success notification
+        if: success() && secrets.notification_webhook
+        uses: meteor-digital/github-actions/actions/notify-teams@main
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          color: "00FF00"
+          message: |
+            ✅ Build artifact created: **${{ needs.setup.outputs.artifact_name }}**
+            
+            **Project:** ${{ needs.setup.outputs.project_name }}
+            **Branch/Tag:** ${{ github.ref_name }}
+            **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          
+      - name: Send failure notification
+        if: failure() && secrets.notification_webhook
+        uses: meteor-digital/github-actions/actions/notify-teams@main
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          color: "FF0000"
+          message: |
+            ❌ Build for **${{ needs.setup.outputs.project_name }}** failed
+            
+            **Branch/Tag:** ${{ github.ref_name }}
+            **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            
+            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

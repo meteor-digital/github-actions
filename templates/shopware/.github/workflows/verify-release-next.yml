@@ -1,0 +1,31 @@
+# Example verify-release-next workflow for Shopware projects
+# This file demonstrates how to reference the reusable verify-release-next workflow
+# Replace 'meteor-digital/github-actions' with your actual workflows repository
+
+name: Verify Release Next
+
+on:
+  schedule:
+    # Run every 30 minutes during working hours (8:00-18:00 Brussels time)
+    # Brussels time is UTC+1 (winter) or UTC+2 (summer)
+    # This schedule runs at 7:00-17:00 UTC to cover both seasons
+    - cron: '0,30 7-17 * * 1-5'  # Every 30 minutes, 7:00-17:00 UTC, Monday-Friday
+  
+  # Allow manual triggering for testing
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch to validate'
+        required: false
+        default: 'release/next'
+
+jobs:
+  verify-release-next:
+    uses: meteor-digital/github-actions/workflows/verify-release-next.yml@main
+    with:
+      branch_name: ${{ github.event.inputs.branch_name || 'release/next' }}
+      config_path: ".github/quality-config.yml"
+      schedule_timezone: "Europe/Brussels"
+    secrets:
+      composer_auth: ${{ secrets.COMPOSER_AUTH }}
+      notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}

@@ -1,0 +1,387 @@
+name: Quality Checks
+
+on:
+  workflow_call:
+    inputs:
+      config_path:
+        description: 'Path to quality configuration file'
+        type: string
+        default: '.github/quality-config.yml'
+      check_changed_files_only:
+        description: 'Only check changed files (for fast PR feedback)'
+        type: boolean
+        default: true
+      run_slow_testsuites:
+        description: 'Run integration and component tests'
+        type: boolean
+        default: false
+    secrets:
+      composer_auth:
+        description: 'Composer authentication JSON'
+        required: true
+
+jobs:
+  # Setup job to generate dependencies cache for parallel jobs
+  setup:
+    name: '🔧 Setup & Dependencies'
+    runs-on: ubuntu-latest
+    outputs:
+      enabled_tools: ${{ steps.quality_config.outputs.enabled_tools }}
+      project_name: ${{ steps.ci_config.outputs.project_name }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Read CI configuration
+        id: ci_config
+        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        with:
+          config_file: '.github/ci-config.yml'
+
+      - name: Parse quality configuration
+        id: quality_config
+        shell: bash
+        run: |
+          CONFIG_FILE="${{ inputs.config_path }}"
+          
+          # Default enabled tools
+          DEFAULT_TOOLS='["php-cs-fixer", "psalm", "phpstan", "rector", "phpunit", "composer-validate"]'
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "✅ Quality configuration file found: $CONFIG_FILE"
+            
+            # Parse enabled tools from configuration
+            if command -v yq >/dev/null 2>&1; then
+              ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools' "$CONFIG_FILE" 2>/dev/null)
+              if [ "$ENABLED_TOOLS" != "null" ]; then
+                # Convert YAML array to JSON array
+                ENABLED_TOOLS=$(echo "$ENABLED_TOOLS" | yq eval -o=json '.')
+              else
+                ENABLED_TOOLS="$DEFAULT_TOOLS"
+              fi
+            else
+              # Fallback parsing without yq
+              ENABLED_TOOLS="$DEFAULT_TOOLS"
+            fi
+          else
+            echo "⚠️  Quality configuration file not found: $CONFIG_FILE"
+            echo "💡 Using default enabled tools"
+            ENABLED_TOOLS="$DEFAULT_TOOLS"
+          fi
+          
+          echo "enabled_tools=$ENABLED_TOOLS" >> $GITHUB_OUTPUT
+          echo "📊 Enabled quality tools: $ENABLED_TOOLS"
+      
+      # Run the setup job here, so the cache is generated for the parallel jobs below
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+  
+  # Basic file validation tasks + PHPUnuhi validation (grouped for efficiency)
+  file-validation:
+    name: '📋 Validate Files & Translations'
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Run file validation checks
+        if: hashFiles('grumphp.yml') != ''
+        shell: bash
+        run: |
+          echo "🔍 Running file validation checks..."
+          php ./vendor/bin/grumphp run --tasks="git_blacklist,file_size,xmllint,yamllint,composer" || true
+      
+      - name: Run PHPUnuhi validation
+        if: hashFiles('phpunuhi.xml') != ''
+        shell: bash
+        run: |
+          echo "🌐 Running translation validation..."
+          php ./vendor/bin/phpunuhi validate:all
+
+      - name: Run custom quality checks
+        if: hashFiles(inputs.config_path) != ''
+        shell: bash
+        run: |
+          CONFIG_FILE="${{ inputs.config_path }}"
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            echo "🔧 Running custom quality checks from: $CONFIG_FILE"
+            
+            # Parse custom checks from configuration
+            if command -v yq >/dev/null 2>&1; then
+              CUSTOM_CHECKS=$(yq eval '.quality_checks.custom_checks' "$CONFIG_FILE" 2>/dev/null)
+              if [ "$CUSTOM_CHECKS" != "null" ] && [ -n "$CUSTOM_CHECKS" ]; then
+                echo "$CUSTOM_CHECKS" | yq eval '.[] | "echo \"Running: " + .name + "\" && " + .command' -
+                echo "$CUSTOM_CHECKS" | yq eval '.[] | .command' - | while read -r command; do
+                  echo "🔍 Executing: $command"
+                  eval "$command"
+                done
+              else
+                echo "💡 No custom checks configured"
+              fi
+            else
+              echo "⚠️  yq not available, skipping custom checks parsing"
+            fi
+          else
+            echo "💡 No quality configuration file found, skipping custom checks"
+          fi
+  
+  # PHP code quality checks (fast tasks)
+  quick-quality-checks:
+    name: '⚡ Quick Code Quality'
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Run Composer Validate
+        if: contains(fromJson(needs.setup.outputs.enabled_tools), 'composer-validate')
+        shell: bash
+        run: |
+          echo "📦 Running Composer validation..."
+          composer validate --no-check-all --strict
+
+      - name: Get changed files
+        if: inputs.check_changed_files_only == true
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            src/**/*.php
+            custom/static-plugins/**/*.php
+            tests/**/*.php
+            **/*.php
+
+      - name: Run PHP-CS-Fixer on changed files
+        if: contains(fromJson(needs.setup.outputs.enabled_tools), 'php-cs-fixer') && hashFiles('.php-cs-fixer.php') != ''
+        shell: bash
+        run: |
+          echo "🎨 Running PHP-CS-Fixer..."
+          if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
+            echo "  Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
+            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation --config=.php-cs-fixer.php ${{ steps.changed-files.outputs.all_changed_files }}
+          else
+            echo "  Checking all files"
+            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation --config=.php-cs-fixer.php
+          fi
+          
+  # Psalm static analysis (slow task)
+  psalm:
+    name: '🔍 Psalm Static Analysis'
+    needs: setup
+    runs-on: ubuntu-latest
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'psalm') && hashFiles('psalm.xml') != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Get changed files
+        if: inputs.check_changed_files_only == true
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            src/**/*.php
+            custom/static-plugins/**/*.php
+            tests/**/*.php
+            **/*.php
+
+      - name: Run Psalm on changed files
+        shell: bash
+        run: |
+          echo "🔍 Running Psalm static analysis..."
+          if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
+            echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
+            php ./vendor/bin/psalm --no-progress --no-cache --config=./psalm.xml ${{ steps.changed-files.outputs.all_changed_files }}
+          else
+            echo "  Analyzing all files"
+            php ./vendor/bin/psalm --no-progress --no-cache --config=./psalm.xml
+          fi
+
+  # PHPStan static analysis (new standard)
+  phpstan:
+    name: '🔍 PHPStan Static Analysis'
+    needs: setup
+    runs-on: ubuntu-latest
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpstan') && hashFiles('phpstan.neon') != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Get changed files
+        if: inputs.check_changed_files_only == true
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            src/**/*.php
+            custom/static-plugins/**/*.php
+            tests/**/*.php
+            **/*.php
+
+      - name: Run PHPStan on changed files
+        shell: bash
+        run: |
+          echo "🔍 Running PHPStan static analysis..."
+          if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
+            echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
+            php ./vendor/bin/phpstan analyse --configuration=phpstan.neon ${{ steps.changed-files.outputs.all_changed_files }}
+          else
+            echo "  Analyzing all files"
+            php ./vendor/bin/phpstan analyse --configuration=phpstan.neon
+          fi
+          
+  # Rector code fixing (slow task)
+  rector:
+    name: '🛠️ Rector Code Analysis'
+    needs: setup
+    runs-on: ubuntu-latest
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'rector') && hashFiles('rector.php') != ''
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Get changed files
+        if: inputs.check_changed_files_only == true
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            src/**/*.php
+            custom/static-plugins/**/*.php
+            tests/**/*.php
+            **/*.php
+
+      - name: Run Rector on changed files
+        shell: bash
+        run: |
+          echo "🛠️ Running Rector code analysis..."
+          if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
+            echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
+            php ./vendor/bin/rector process --dry-run --no-progress-bar ${{ steps.changed-files.outputs.all_changed_files }}
+          else
+            echo "  Analyzing all files"
+            php ./vendor/bin/rector process --dry-run --no-progress-bar
+          fi
+  
+  unit-tests:
+    name: '🧪 PHP Unit Tests'
+    needs: setup
+    runs-on: ubuntu-latest
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpunit')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Run unit tests
+        shell: bash
+        run: |
+          echo "🧪 Running PHP unit tests..."
+          php ./vendor/bin/phpunit --testsuite unit
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: disabled  
+  
+  slow-testsuites:
+    name: '🧪 Slow PHP Unit Test Suites'
+    needs: setup
+    runs-on: ubuntu-latest
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpunit') && inputs.run_slow_testsuites == true
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: shopware_test
+          MYSQL_ROOT_PASSWORD: shopware
+          MYSQL_USER: shopware
+          MYSQL_PASSWORD: shopware
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+        options: --health-cmd="rabbitmqctl status" --health-interval=10s --health-timeout=5s --health-retries=3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        uses: meteor-digital/github-actions/actions/setup-environment@main
+        with:
+          config_file: '.github/ci-config.yml'
+          composer_with_dev: 'yes'
+          composer_auth: ${{ secrets.composer_auth }}
+      
+      - name: Configure test environment
+        shell: bash
+        run: |
+          echo "🔧 Configuring test environment..."
+          echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
+          echo 'MESSENGER_TRANSPORT_DSN=amqp://guest:guest@127.0.0.1:5672' >> .env.test.local
+      
+      - name: Run integration tests
+        shell: bash
+        run: |
+          echo "🧪 Running integration tests..."
+          php ./vendor/bin/phpunit --testsuite integration
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: disabled
+      
+      - name: Run component tests
+        shell: bash
+        run: |
+          echo "🧪 Running component tests..."
+          php ./vendor/bin/phpunit --testsuite component
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: disabled

@@ -292,6 +292,66 @@ notifications:
     icon_emoji: ":rocket:"
 ```
 
+## Workflow Configuration
+
+### Verify Release Next Workflow
+
+The verify-release-next workflow provides scheduled validation of release branches to catch issues early. It runs comprehensive quality checks and sends notifications when validation fails.
+
+#### Configuration
+
+The workflow uses the same quality configuration as other workflows but runs with comprehensive settings:
+
+```yaml
+# .github/workflows/verify-release-next.yml
+name: Verify Release Next
+
+on:
+  schedule:
+    # Run every 30 minutes during working hours (8:00-18:00 Brussels time)
+    - cron: '0,30 7-17 * * 1-5'  # Every 30 minutes, 7:00-17:00 UTC, Monday-Friday
+  
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch to validate'
+        required: false
+        default: 'release/next'
+
+jobs:
+  verify-release-next:
+    uses: meteor-digital/github-actions/workflows/verify-release-next.yml@main
+    with:
+      branch_name: ${{ github.event.inputs.branch_name || 'release/next' }}
+      config_path: ".github/quality-config.yml"
+      schedule_timezone: "Europe/Brussels"
+    secrets:
+      composer_auth: ${{ secrets.COMPOSER_AUTH }}
+      notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}
+```
+
+#### Features
+
+- **Commit Status Tracking**: Avoids redundant validation by checking GitHub commit status
+- **Comprehensive Validation**: Runs all quality checks including slow test suites
+- **Failure Notifications**: Sends detailed Teams/Slack notifications when validation fails
+- **Scheduled Execution**: Configurable cron schedule for automated validation
+- **Manual Triggering**: Supports manual workflow dispatch for testing
+
+#### Notification Format
+
+When validation fails, the workflow sends a detailed notification including:
+
+- Project name and branch name
+- Commit SHA, author, and message
+- Direct link to the workflow run
+- Formatted for immediate action by development teams
+
+#### Required Secrets
+
+- `COMPOSER_AUTH`: For dependency installation
+- `TEAMS_WEBHOOK` or `SLACK_WEBHOOK`: For failure notifications (optional)
+
 ## Environment Variables and Secrets
 
 ### Required Secrets

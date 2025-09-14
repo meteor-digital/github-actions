@@ -25,12 +25,10 @@ concurrency:
 
 jobs:
   build:
-    uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
+    uses: meteor-digital/github-actions/workflows/build-artifact.yml@main
     with:
       config_path: ".github/ci-config.yml"
       build_type: "production"
     secrets:
-      meteor_satis_username: ${{ secrets.METEOR_SATIS_USERNAME }}
-      meteor_satis_password: ${{ secrets.METEOR_SATIS_PASSWORD }}
-      shopware_store_bearer_token: ${{ secrets.SHOPWARE_STORE_BEARER_TOKEN }}
+      composer_auth: ${{ secrets.COMPOSER_AUTH }}
       notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}

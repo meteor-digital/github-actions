@@ -59,7 +59,7 @@ on:
 
 jobs:
   build:
-    uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
+    uses: meteor-digital/github-actions/workflows/build-artifact.yml@main
     with:
       config_path: ".github/ci-config.yml"
     secrets:
@@ -104,22 +104,22 @@ For detailed configuration options and examples for different frameworks, see th
 ## Available Workflows
 
 ### PR Checks Workflow
-- **File**: `.github/workflows/pr-checks.yml`
+- **File**: `workflows/pr-checks.yml`
 - **Purpose**: Fast feedback for pull request validation
 - **Triggers**: Pull request creation and updates
 
 ### Quality Checks Workflow
-- **File**: `.github/workflows/quality-checks.yml`
+- **File**: `workflows/quality-checks.yml`
 - **Purpose**: Runs code quality tools and tests
 - **Triggers**: Pull requests, pushes to main branches
 
 ### Build Artifact Workflow
-- **File**: `.github/workflows/build-artifact.yml`
+- **File**: `workflows/build-artifact.yml`
 - **Purpose**: Builds project artifacts with configurable build steps
 - **Triggers**: Push to branches, pull requests, tags
 
 ### Deploy Workflow  
-- **File**: `.github/workflows/deploy.yml`
+- **File**: `workflows/deploy.yml`
 - **Purpose**: Deploys built artifacts to configured environments
 - **Triggers**: Successful builds on configured branches/tags
 

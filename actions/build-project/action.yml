@@ -12,13 +12,13 @@ runs:
   steps:
     - name: Read configuration
       id: config
-      uses: ../parse-ci-config
+      uses: meteor-digital/github-actions/actions/parse-ci-config@main
       with:
         config_file: ${{ inputs.config_file }}
         
     - name: Detect project type
       id: project-type
-      uses: ../detect-project-type
+      uses: meteor-digital/github-actions/actions/detect-project-type@main
         
     - name: Install Shopware CLI
       if: steps.project-type.outputs.type == 'shopware'

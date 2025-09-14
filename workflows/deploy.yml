@@ -1,0 +1,139 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment (test, acc, prod)'
+        type: string
+        required: true
+      config_path:
+        description: 'Path to deployment configuration file'
+        type: string
+        default: '.github/deployment-config.yml'
+      artifact_name:
+        description: 'Name of the build artifact to deploy'
+        type: string
+        required: false
+      artifact_run_id:
+        description: 'Run ID of the workflow that created the artifact'
+        type: string
+        required: false
+      release_version:
+        description: 'Release version to deploy (for manual deployments)'
+        type: string
+        required: false
+    secrets:
+      ssh_private_key:
+        description: 'SSH private key for deployment'
+        required: true
+      ssh_user:
+        description: 'SSH username for deployment'
+        required: true
+      notification_webhook:
+        description: 'Teams/Slack webhook URL for notifications'
+        required: false
+
+jobs:
+  setup:
+    name: 'Prepare deployment'
+    runs-on: ubuntu-latest
+    outputs:
+      project_name: ${{ steps.config.outputs.project_name }}
+      deploy_date: ${{ steps.setup.outputs.deploy_date }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read configuration
+        id: config
+        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        with:
+          config_file: ${{ inputs.config_path }}
+
+      - name: Setup deployment variables
+        id: setup
+        shell: bash
+        run: |
+          # Format date and set as output
+          DEPLOY_DATE=$(date +'%Y%m%d.%H%M')
+          echo "deploy_date=$DEPLOY_DATE" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: 'Deploy to ${{ inputs.environment }}'
+    needs: [setup]
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    
+    # Prevent parallel deployments to the same environment
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Send start notification
+        if: secrets.notification_webhook
+        uses: meteor-digital/github-actions/actions/notify-teams@main
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          color: "FFFF00"
+          message: "🚀 Deploy **${{ needs.setup.outputs.project_name }}** to **${{ inputs.environment }}**"
+        
+      - name: Download build artifact from workflow run
+        if: inputs.artifact_name && inputs.artifact_run_id
+        uses: pyTooling/download-artifact@v5
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Download release asset for manual deployment
+        if: inputs.release_version
+        shell: bash
+        run: |
+          gh release download ${{ inputs.release_version }} --pattern "*.tar.gz"
+          tar -xpf *.tar.gz
+          rm *.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            
+      - name: Deploy to host
+        id: deployment
+        uses: meteor-digital/github-actions/actions/deploy-to-host@main
+        with:
+          config_file: ${{ inputs.config_path }}
+          environment: ${{ inputs.environment }}
+          build_path: '.'
+          ssh_private_key: ${{ secrets.ssh_private_key }}
+          ssh_user: ${{ secrets.ssh_user }}
+          
+      - name: Send success notification
+        if: success() && secrets.notification_webhook
+        uses: meteor-digital/github-actions/actions/notify-teams@main
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          color: "00FF00"
+          message: |
+            ✅ Deploy **${{ needs.setup.outputs.project_name }}** to **${{ inputs.environment }}** SUCCESS
+            
+            **Environment:** ${{ inputs.environment }}
+            **Artifact:** ${{ inputs.artifact_name || inputs.release_version }}
+            **Deployed at:** ${{ needs.setup.outputs.deploy_date }}
+          
+      - name: Send failure notification
+        if: failure() && secrets.notification_webhook
+        uses: meteor-digital/github-actions/actions/notify-teams@main
+        with:
+          webhook_url: ${{ secrets.notification_webhook }}
+          color: "FF0000"
+          message: |
+            ❌ Deploy **${{ needs.setup.outputs.project_name }}** to **${{ inputs.environment }}** FAILED
+            
+            **Environment:** ${{ inputs.environment }}
+            **Artifact:** ${{ inputs.artifact_name || inputs.release_version }}
+            
+            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
