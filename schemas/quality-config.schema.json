@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/quality-config.schema.json",
+  "title": "Quality Configuration Schema",
+  "description": "Schema for quality configuration file (quality-config.yml) used by generic CI/CD workflows",
+  "type": "object",
+  "required": ["quality_checks"],
+  "properties": {
+    "quality_checks": {
+      "type": "object",
+      "description": "Code quality check configuration",
+      "required": ["enabled_tools"],
+      "properties": {
+        "enabled_tools": {
+          "type": "array",
+          "description": "List of quality tools to run",
+          "items": {
+            "type": "string",
+            "enum": [
+              "php-cs-fixer",
+              "psalm",
+              "phpstan",
+              "rector",
+              "phpunit",
+              "composer-validate"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "examples": [
+            ["php-cs-fixer", "psalm", "rector", "phpunit"],
+            ["php-cs-fixer", "phpstan", "rector", "phpunit", "composer-validate"]
+          ]
+        },
+        "custom_checks": {
+          "type": "array",
+          "description": "Custom quality checks to run",
+          "items": {
+            "$ref": "#/definitions/custom_check"
+          },
+          "examples": [
+            [
+              {
+                "name": "phpunuhi",
+                "command": "php ./vendor/bin/phpunuhi validate:all"
+              },
+              {
+                "name": "security-audit",
+                "command": "composer audit"
+              }
+            ]
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "custom_check": {
+      "type": "object",
+      "description": "Custom quality check definition",
+      "required": ["name", "command"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the custom check",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9-_]*$",
+          "examples": ["phpunuhi", "security-audit", "dependency-check"]
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute for the check",
+          "examples": [
+            "php ./vendor/bin/phpunuhi validate:all",
+            "composer audit",
+            "composer outdated --direct"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

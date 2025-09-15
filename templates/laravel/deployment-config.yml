@@ -1,27 +1,47 @@
-# Deployment configuration for Laravel projects
-# Framework-specific defaults are automatically loaded from the shared actions repo
-# Only specify values that differ from the defaults
+# Deployment Configuration for Laravel Projects
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/deployment-config.schema.json
+# Framework-specific defaults are automatically applied (shared folders, commands, etc.)
 
 environments:
   test:
-    host: "test.example.com"
-    path: "/var/www/test"
+    host: "test.example.com"  # Replace with actual hostname
+    path: "/var/www/test"  # Replace with actual path
     maintenance_mode: true
     
-  acc:
-    host: "acc.example.com"
-    path: "/var/www/acc"
+  staging:
+    host: "staging.example.com"  # Replace with actual hostname
+    path: "/var/www/staging"  # Replace with actual path
     maintenance_mode: true
     
   prod:
-    host: "prod.example.com"
-    path: "/var/www/prod"
+    host: "prod.example.com"  # Replace with actual hostname
+    path: "/var/www/prod"  # Replace with actual path
     maintenance_mode: true
 
 hosting:
-  provider: "level27"  # Required: level27, byte, hipex, hostedpower, generic
+  provider: "level27"  # level27, byte, hipex, hostedpower, generic
   ssh_port: 22
-  php_service: "php8.1-fpm"
+  php_service: "php8.2-fpm"
+
+# Optional: Override framework defaults
+# Laravel defaults include:
+# - shared_folders: ["storage", "bootstrap/cache"]
+# - post_deploy: ["php artisan config:cache", "php artisan route:cache", "php artisan view:cache"]
+deployment:
+  # Add custom shared folders to framework defaults
+  shared_folders:
+    - "public/uploads"  # Custom upload directory
+  
+  commands:
+    pre_deploy:
+      - "php artisan migrate --force"  # Run database migrations
+      - "php artisan queue:restart"    # Restart queue workers
+    post_deploy:
+      - "php artisan storage:link"     # Create storage symlink
+      - "php artisan optimize"         # Optimize application
+  
+  cleanup:
+    keep_releases: 3  # Keep 3 releases for rollback capability
 
 # Optional: Override framework defaults
 # deployment:

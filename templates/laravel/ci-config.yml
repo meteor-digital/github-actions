@@ -1,13 +1,13 @@
-# CI Configuration for Shopware Projects
+# CI Configuration for Laravel Projects
 # Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/ci-config.schema.json
 
 project:
-  name: "my-shopware-shop"  # Used for artifacts, notifications, and releases
-  # type: "shopware"  # Auto-detected from shopware-project.yml
+  name: "my-laravel-app"  # Used for artifacts, notifications, and releases
+  # type: "laravel"  # Auto-detected from artisan file
   
 runtime:
-  php_version: "8.1"  # PHP version for builds and quality checks
-  node_version: "18"  # Node.js version for asset compilation
+  php_version: "8.2"  # PHP version for builds and quality checks
+  node_version: "20"  # Node.js version for asset compilation
   php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
   
 build:
@@ -18,12 +18,13 @@ build:
     tests/*
     .env*
     .env.local*
-    var/cache/*
-    var/log/*
-    public/bundles/*
-    public/css/*
-    public/js/*
-    public/theme/*
+    .env.testing*
+    storage/logs/*
+    storage/framework/cache/*
+    storage/framework/sessions/*
+    storage/framework/testing/*
+    storage/framework/views/*
+    bootstrap/cache/*
     *.log
     *.cache
     .phpunit.result.cache
@@ -33,6 +34,9 @@ build:
   build_commands:
     - "npm run build"
     - "composer install --no-dev --optimize-autoloader"
+    - "php artisan config:cache"
+    - "php artisan route:cache"
+    - "php artisan view:cache"
   
 artifacts:
   retention_days: 7  # Keep artifacts for 7 days

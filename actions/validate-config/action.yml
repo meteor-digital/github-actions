@@ -1,0 +1,283 @@
+name: 'Validate Configuration'
+description: 'Validates CI/CD configuration files against JSON schemas'
+
+inputs:
+  config_directory:
+    description: 'Directory containing configuration files'
+    required: false
+    default: '.github'
+  fail_on_missing:
+    description: 'Fail if required configuration files are missing'
+    required: false
+    default: 'true'
+  validate_schemas:
+    description: 'Validate against JSON schemas (requires ajv-cli)'
+    required: false
+    default: 'true'
+
+outputs:
+  validation_result:
+    description: 'Validation result (success, warning, error)'
+    value: ${{ steps.validate.outputs.result }}
+  missing_files:
+    description: 'List of missing configuration files'
+    value: ${{ steps.validate.outputs.missing_files }}
+  validation_errors:
+    description: 'List of validation errors'
+    value: ${{ steps.validate.outputs.validation_errors }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate configuration files
+      id: validate
+      shell: bash
+      run: |
+        CONFIG_DIR="${{ inputs.config_directory }}"
+        FAIL_ON_MISSING="${{ inputs.fail_on_missing }}"
+        VALIDATE_SCHEMAS="${{ inputs.validate_schemas }}"
+        
+        echo "🔍 Validating CI/CD configuration in $CONFIG_DIR..."
+        
+        # Required configuration files
+        REQUIRED_FILES=(
+            "$CONFIG_DIR/ci-config.yml"
+            "$CONFIG_DIR/deployment-config.yml"
+            "$CONFIG_DIR/quality-config.yml"
+        )
+        
+        # Schema mappings
+        declare -A SCHEMA_MAP=(
+            ["$CONFIG_DIR/ci-config.yml"]="ci-config.schema.json"
+            ["$CONFIG_DIR/deployment-config.yml"]="deployment-config.schema.json"
+            ["$CONFIG_DIR/quality-config.yml"]="quality-config.schema.json"
+        )
+        
+        MISSING_FILES=()
+        VALIDATION_ERRORS=()
+        RESULT="success"
+        
+        # Check if configuration files exist
+        echo "📋 Checking required configuration files..."
+        for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+                MISSING_FILES+=("$file")
+                echo "  ❌ Missing: $file"
+            else
+                echo "  ✅ Found: $file"
+            fi
+        done
+        
+        # Handle missing files
+        if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ Missing required configuration files:"
+            for file in "${MISSING_FILES[@]}"; do
+                echo "  - $file"
+            done
+            
+            if [ "$FAIL_ON_MISSING" = "true" ]; then
+                echo ""
+                echo "💡 To create configuration files, use one of these methods:"
+                echo "  1. Copy from templates: cp templates/shopware/*.yml .github/"
+                echo "  2. Run setup script: ./scripts/setup-project.sh shopware level27"
+                RESULT="error"
+            else
+                echo ""
+                echo "⚠️  Continuing with missing files (fail_on_missing=false)"
+                RESULT="warning"
+            fi
+        fi
+        
+        # Validate YAML syntax for existing files
+        echo ""
+        echo "📝 Validating YAML syntax..."
+        for file in "${REQUIRED_FILES[@]}"; do
+            if [ -f "$file" ]; then
+                if command -v yq >/dev/null 2>&1; then
+                    if yq eval '.' "$file" > /dev/null 2>&1; then
+                        echo "  ✅ $file - Valid YAML syntax"
+                    else
+                        echo "  ❌ $file - Invalid YAML syntax"
+                        VALIDATION_ERRORS+=("$file: Invalid YAML syntax")
+                        RESULT="error"
+                    fi
+                else
+                    echo "  ⚠️  $file - Cannot validate YAML (yq not available)"
+                fi
+            fi
+        done
+        
+        # Validate against JSON schemas
+        if [ "$VALIDATE_SCHEMAS" = "true" ]; then
+            echo ""
+            echo "🔍 Validating against JSON schemas..."
+            
+            if command -v ajv >/dev/null 2>&1; then
+                # Get schema directory (relative to this action)
+                ACTION_DIR="$(dirname "${BASH_SOURCE[0]}")"
+                SCHEMA_DIR="$ACTION_DIR/../../schemas"
+                
+                for file in "${REQUIRED_FILES[@]}"; do
+                    if [ -f "$file" ]; then
+                        schema_file="${SCHEMA_MAP[$file]}"
+                        schema_path="$SCHEMA_DIR/$schema_file"
+                        
+                        if [ -f "$schema_path" ]; then
+                            if ajv validate -s "$schema_path" -d "$file" --verbose 2>/dev/null; then
+                                echo "  ✅ $file - Valid against schema"
+                            else
+                                echo "  ❌ $file - Schema validation failed"
+                                # Get detailed error message
+                                error_msg=$(ajv validate -s "$schema_path" -d "$file" 2>&1 | head -5)
+                                VALIDATION_ERRORS+=("$file: Schema validation failed - $error_msg")
+                                RESULT="error"
+                            fi
+                        else
+                            echo "  ⚠️  $file - Schema not found at $schema_path"
+                            VALIDATION_ERRORS+=("$file: Schema file not found")
+                            RESULT="warning"
+                        fi
+                    fi
+                done
+            else
+                echo "  ⚠️  ajv-cli not available - skipping schema validation"
+                echo "     Install with: npm install -g ajv-cli"
+                if [ "$VALIDATE_SCHEMAS" = "true" ]; then
+                    RESULT="warning"
+                fi
+            fi
+        fi
+        
+        # Validate configuration content
+        echo ""
+        echo "🔧 Validating configuration content..."
+        
+        # Validate CI configuration
+        if [ -f "$CONFIG_DIR/ci-config.yml" ]; then
+            echo "  📋 Validating CI configuration..."
+            
+            # Check required fields
+            if command -v yq >/dev/null 2>&1; then
+                project_name=$(yq eval '.project.name' "$CONFIG_DIR/ci-config.yml" 2>/dev/null)
+                php_version=$(yq eval '.runtime.php_version' "$CONFIG_DIR/ci-config.yml" 2>/dev/null)
+                
+                if [ -z "$project_name" ] || [ "$project_name" = "null" ]; then
+                    echo "    ❌ Missing required field: project.name"
+                    VALIDATION_ERRORS+=("ci-config.yml: Missing required field project.name")
+                    RESULT="error"
+                else
+                    echo "    ✅ Project name: $project_name"
+                fi
+                
+                if [ -z "$php_version" ] || [ "$php_version" = "null" ]; then
+                    echo "    ❌ Missing required field: runtime.php_version"
+                    VALIDATION_ERRORS+=("ci-config.yml: Missing required field runtime.php_version")
+                    RESULT="error"
+                else
+                    # Validate PHP version format
+                    if [[ "$php_version" =~ ^[0-9]+\.[0-9]+$ ]]; then
+                        echo "    ✅ PHP version: $php_version"
+                    else
+                        echo "    ❌ Invalid PHP version format: $php_version (expected: X.Y)"
+                        VALIDATION_ERRORS+=("ci-config.yml: Invalid PHP version format")
+                        RESULT="error"
+                    fi
+                fi
+            fi
+        fi
+        
+        # Validate deployment configuration
+        if [ -f "$CONFIG_DIR/deployment-config.yml" ]; then
+            echo "  🚀 Validating deployment configuration..."
+            
+            if command -v yq >/dev/null 2>&1; then
+                # Check if at least one environment is defined
+                environments=$(yq eval '.environments | keys | length' "$CONFIG_DIR/deployment-config.yml" 2>/dev/null)
+                if [ "$environments" = "0" ] || [ "$environments" = "null" ]; then
+                    echo "    ❌ No environments defined"
+                    VALIDATION_ERRORS+=("deployment-config.yml: No environments defined")
+                    RESULT="error"
+                else
+                    echo "    ✅ Found $environments environment(s)"
+                fi
+                
+                # Check hosting provider
+                provider=$(yq eval '.hosting.provider' "$CONFIG_DIR/deployment-config.yml" 2>/dev/null)
+                if [ -z "$provider" ] || [ "$provider" = "null" ]; then
+                    echo "    ❌ Missing required field: hosting.provider"
+                    VALIDATION_ERRORS+=("deployment-config.yml: Missing required field hosting.provider")
+                    RESULT="error"
+                else
+                    # Validate provider value
+                    case "$provider" in
+                        "level27"|"byte"|"hipex"|"hostedpower"|"generic")
+                            echo "    ✅ Hosting provider: $provider"
+                            ;;
+                        *)
+                            echo "    ❌ Invalid hosting provider: $provider"
+                            echo "       Valid options: level27, byte, hipex, hostedpower, generic"
+                            VALIDATION_ERRORS+=("deployment-config.yml: Invalid hosting provider")
+                            RESULT="error"
+                            ;;
+                    esac
+                fi
+            fi
+        fi
+        
+        # Validate quality configuration
+        if [ -f "$CONFIG_DIR/quality-config.yml" ]; then
+            echo "  🔍 Validating quality configuration..."
+            
+            if command -v yq >/dev/null 2>&1; then
+                # Check if quality tools are defined
+                tools_count=$(yq eval '.quality_checks.enabled_tools | length' "$CONFIG_DIR/quality-config.yml" 2>/dev/null)
+                if [ "$tools_count" = "0" ] || [ "$tools_count" = "null" ]; then
+                    echo "    ❌ No quality tools enabled"
+                    VALIDATION_ERRORS+=("quality-config.yml: No quality tools enabled")
+                    RESULT="error"
+                else
+                    echo "    ✅ Found $tools_count enabled quality tool(s)"
+                fi
+            fi
+        fi
+        
+        # Summary
+        echo ""
+        echo "📊 Validation Summary:"
+        echo "  Result: $RESULT"
+        echo "  Missing files: ${#MISSING_FILES[@]}"
+        echo "  Validation errors: ${#VALIDATION_ERRORS[@]}"
+        
+        if [ ${#VALIDATION_ERRORS[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ Validation Errors:"
+            for error in "${VALIDATION_ERRORS[@]}"; do
+                echo "  - $error"
+            done
+        fi
+        
+        # Set outputs
+        echo "result=$RESULT" >> $GITHUB_OUTPUT
+        
+        # Convert arrays to newline-separated strings for output
+        missing_files_str=""
+        for file in "${MISSING_FILES[@]}"; do
+            missing_files_str="$missing_files_str$file"$'\n'
+        done
+        echo "missing_files<<EOF" >> $GITHUB_OUTPUT
+        echo "$missing_files_str" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        validation_errors_str=""
+        for error in "${VALIDATION_ERRORS[@]}"; do
+            validation_errors_str="$validation_errors_str$error"$'\n'
+        done
+        echo "validation_errors<<EOF" >> $GITHUB_OUTPUT
+        echo "$validation_errors_str" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        # Exit with error code if validation failed
+        if [ "$RESULT" = "error" ]; then
+            exit 1
+        fi

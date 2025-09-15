@@ -144,6 +144,14 @@ runs:
         if [ -f "$CONFIG_FILE" ]; then
           echo "✅ Configuration file found: $CONFIG_FILE"
           
+          # Validate YAML syntax first
+          if command -v yq >/dev/null 2>&1; then
+            if ! yq eval '.' "$CONFIG_FILE" > /dev/null 2>&1; then
+              echo "❌ Error: Invalid YAML syntax in $CONFIG_FILE"
+              exit 1
+            fi
+          fi
+          
           # Parse environment-specific configuration
           if command -v yq >/dev/null 2>&1; then
             echo "📦 Using yq for project configuration parsing"
@@ -254,6 +262,18 @@ runs:
           echo "❌ Error: Hosting provider not configured - must specify one of: level27, byte, hipex, hostedpower, generic"
           exit 1
         fi
+        
+        # Validate hosting provider value
+        case "$PROVIDER" in
+          "level27"|"byte"|"hipex"|"hostedpower"|"generic")
+            echo "✅ Valid hosting provider: $PROVIDER"
+            ;;
+          *)
+            echo "❌ Error: Invalid hosting provider '$PROVIDER'"
+            echo "   Valid options: level27, byte, hipex, hostedpower, generic"
+            exit 1
+            ;;
+        esac
         
         # Set defaults for optional values
         [ "$SSH_PORT" = "null" ] && SSH_PORT="22"

@@ -1,44 +1,47 @@
-# Deployment configuration for Shopware projects
-# Framework-specific defaults are automatically loaded from the shared actions repo
-# Only specify values that differ from the defaults
+# Deployment Configuration for Shopware Projects
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/deployment-config.schema.json
+# Framework-specific defaults are automatically applied (shared folders, commands, etc.)
 
 environments:
   test:
-    host: "test.example.com"
-    path: "/var/www/test"
+    host: "test.example.com"  # Replace with actual hostname
+    path: "/var/www/test"  # Replace with actual path
     maintenance_mode: true
     
   acc:
-    host: "acc.example.com"
-    path: "/var/www/acc"
+    host: "acc.example.com"  # Replace with actual hostname
+    path: "/var/www/acc"  # Replace with actual path
     maintenance_mode: true
     
   prod:
-    host: "prod.example.com"
-    path: "/var/www/prod"
+    host: "prod.example.com"  # Replace with actual hostname
+    path: "/var/www/prod"  # Replace with actual path
     maintenance_mode: true
 
 hosting:
-  provider: "level27"  # Required: level27, byte, hipex, hostedpower, generic
+  provider: "level27"  # level27, byte, hipex, hostedpower, generic
   ssh_port: 22
   php_service: "php8.1-fpm"
-  messenger_worker_id: "1"  # For Shopware/Symfony projects with Level27
+  messenger_worker_id: "1"  # For Shopware messenger workers (Level27 specific)
 
 # Optional: Override framework defaults
+# Shopware defaults are automatically applied:
+# - shared_folders: ["files", "public/media", "public/sitemap", "public/thumbnail", "config/jwt", "var/log"]
+# - pre_deploy: ["bin/console cache:warmup --no-optional-warmers"]
+# - post_deploy: ["bin/console theme:compile --active-only", "bin/console scheduled-task:register", "bin/console dal:refresh:index"]
+# - cleanup: keep_releases: 3
+# - Database migrations are handled separately in the deployment workflow
+
+# Uncomment and customize only if you need to override the defaults:
 # deployment:
 #   shared_folders:
-#     - "files"
-#     - "public/media"
-#     - "custom/shared/folder"  # Add custom folders to defaults
+#     - "custom/plugins/uploads"  # Add custom shared folders to defaults
 #   
 #   commands:
 #     pre_deploy:
-#       - "bin/console plugin:refresh"
-#       - "custom-pre-deploy-command"  # Add custom commands
+#       - "custom-pre-deploy-command"  # Add custom pre-deploy commands
 #     post_deploy:
-#       - "bin/console cache:warmup"
-#       - "bin/console theme:compile --active-only"
-#       - "custom-post-deploy-command"  # Add custom commands
+#       - "custom-post-deploy-command"  # Add custom post-deploy commands
 #   
 #   cleanup:
 #     keep_releases: 5  # Override default of 3

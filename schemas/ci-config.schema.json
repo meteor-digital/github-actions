@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/ci-config.schema.json",
+  "title": "CI Configuration Schema",
+  "description": "Schema for CI configuration file (ci-config.yml) used by generic CI/CD workflows",
+  "type": "object",
+  "required": ["project", "runtime"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "description": "Project-specific configuration",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name used for artifacts, notifications, and releases. Defaults to repository name if not specified.",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-_]*[a-zA-Z0-9]$",
+          "minLength": 2,
+          "maxLength": 50,
+          "examples": ["my-shopware-shop", "laravel-api", "symfony-webapp"]
+        },
+        "type": {
+          "type": "string",
+          "description": "Project type (auto-detected if not specified). Detection order: shopware-project.yml → artisan → symfony.lock → default shopware",
+          "enum": ["shopware", "laravel", "symfony", "generic"],
+          "default": "shopware"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Runtime environment configuration",
+      "required": ["php_version"],
+      "properties": {
+        "php_version": {
+          "type": "string",
+          "description": "PHP version to use for builds and quality checks",
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "examples": ["8.1", "8.2", "8.3"]
+        },
+        "node_version": {
+          "type": "string",
+          "description": "Node.js version to use for asset compilation",
+          "pattern": "^[0-9]+$",
+          "default": "18",
+          "examples": ["16", "18", "20"]
+        },
+        "php_extensions": {
+          "type": "string",
+          "description": "Comma-separated list of PHP extensions to install",
+          "default": "mbstring, intl, gd, xml, zip, curl, opcache",
+          "examples": [
+            "mbstring, intl, gd, xml, zip, curl, opcache",
+            "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "description": "Build configuration",
+      "properties": {
+        "exclude_patterns": {
+          "type": "string",
+          "description": "Multi-line string with glob patterns for files to exclude from build artifacts",
+          "default": "*.git*\nnode_modules/*\ntests/*\n.env*",
+          "examples": [
+            "*.git*\nnode_modules/*\ntests/*\n.env*\nvar/cache/*\nvar/log/*",
+            "*.git*\nnode_modules/*\ntests/*\n.env*\nstorage/logs/*\nstorage/framework/cache/*"
+          ]
+        },
+        "build_commands": {
+          "type": "array",
+          "description": "Array of shell commands to execute during build process",
+          "items": {
+            "type": "string"
+          },
+          "default": ["npm run build", "composer install --no-dev --optimize-autoloader"],
+          "examples": [
+            ["npm run build", "composer install --no-dev --optimize-autoloader"],
+            ["npm run build", "composer install --no-dev", "php artisan config:cache", "php artisan route:cache"],
+            ["npm run build", "composer install --no-dev", "bin/console cache:warmup --env=prod"]
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Build artifact configuration",
+      "properties": {
+        "retention_days": {
+          "type": "integer",
+          "description": "Number of days to retain build artifacts",
+          "minimum": 1,
+          "maximum": 90,
+          "default": 7
+        },
+        "naming_pattern": {
+          "type": "string",
+          "description": "Pattern for artifact naming. Available variables: {environment}, {version}, {project}",
+          "default": "{environment}-build-{version}",
+          "examples": [
+            "{environment}-build-{version}",
+            "{project}-{environment}-{version}",
+            "build-{project}-{environment}-{version}"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,42 @@
+# Deployment Configuration for Generic Projects
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/deployment-config.schema.json
+
+environments:
+  test:
+    host: "test.example.com"  # Replace with actual hostname
+    path: "/var/www/test"  # Replace with actual path
+    maintenance_mode: false  # Generic projects may not support maintenance mode
+    
+  staging:
+    host: "staging.example.com"  # Replace with actual hostname
+    path: "/var/www/staging"  # Replace with actual path
+    maintenance_mode: false
+    
+  prod:
+    host: "prod.example.com"  # Replace with actual hostname
+    path: "/var/www/prod"  # Replace with actual path
+    maintenance_mode: false
+
+hosting:
+  provider: "generic"  # Use generic provider for custom setups
+  ssh_port: 22
+  php_service: "php-fpm"
+  custom_commands:
+    restart_services: "sudo service nginx reload && sudo service php-fpm restart"
+
+# Generic deployment configuration
+deployment:
+  # Shared folders for generic projects
+  shared_folders:
+    - "uploads"
+    - "logs"
+    - "cache"
+  
+  commands:
+    pre_deploy:
+      - "echo 'Starting deployment...'"
+    post_deploy:
+      - "echo 'Deployment completed'"
+  
+  cleanup:
+    keep_releases: 3  # Keep 3 releases for rollback capability

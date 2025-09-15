@@ -1,9 +1,9 @@
-# CI Configuration for Shopware Projects
+# CI Configuration for Symfony Projects
 # Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/ci-config.schema.json
 
 project:
-  name: "my-shopware-shop"  # Used for artifacts, notifications, and releases
-  # type: "shopware"  # Auto-detected from shopware-project.yml
+  name: "my-symfony-app"  # Used for artifacts, notifications, and releases
+  # type: "symfony"  # Auto-detected from symfony.lock file
   
 runtime:
   php_version: "8.1"  # PHP version for builds and quality checks
@@ -18,12 +18,10 @@ build:
     tests/*
     .env*
     .env.local*
+    .env.test*
     var/cache/*
     var/log/*
     public/bundles/*
-    public/css/*
-    public/js/*
-    public/theme/*
     *.log
     *.cache
     .phpunit.result.cache
@@ -33,6 +31,8 @@ build:
   build_commands:
     - "npm run build"
     - "composer install --no-dev --optimize-autoloader"
+    - "bin/console cache:warmup --env=prod"
+    - "bin/console assets:install --env=prod"
   
 artifacts:
   retention_days: 7  # Keep artifacts for 7 days

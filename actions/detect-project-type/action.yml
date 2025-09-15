@@ -1,10 +1,19 @@
 name: 'Detect Project Type'
-description: 'Auto-detects project type based on project files'
+description: 'Auto-detects project type based on project files or configuration override'
+
+inputs:
+  config_file:
+    description: 'Path to CI configuration file (for type override)'
+    required: false
+    default: '.github/ci-config.yml'
 
 outputs:
   type:
-    description: 'Detected project type (shopware, laravel, symfony)'
+    description: 'Detected project type (shopware, laravel, symfony, generic)'
     value: ${{ steps.detect.outputs.type }}
+  detection_method:
+    description: 'How the type was detected (config, file, default)'
+    value: ${{ steps.detect.outputs.detection_method }}
 
 runs:
   using: 'composite'
@@ -13,19 +22,72 @@ runs:
       id: detect
       shell: bash
       run: |
+        CONFIG_FILE="${{ inputs.config_file }}"
+        
         echo "🔍 Auto-detecting project type..."
         
-        # Detection priority order as per design
-        if [ -f "shopware-project.yml" ]; then
-          echo "✅ Found shopware-project.yml - Shopware project detected"
-          echo "type=shopware" >> $GITHUB_OUTPUT
-        elif [ -f "artisan" ]; then
-          echo "✅ Found artisan file - Laravel project detected"
-          echo "type=laravel" >> $GITHUB_OUTPUT
-        elif [ -f "symfony.lock" ]; then
-          echo "✅ Found symfony.lock - Symfony project detected"
-          echo "type=symfony" >> $GITHUB_OUTPUT
-        else
-          echo "⚠️  No specific project files found - defaulting to Shopware"
-          echo "type=shopware" >> $GITHUB_OUTPUT
+        PROJECT_TYPE=""
+        DETECTION_METHOD=""
+        
+        # First, check if type is explicitly set in configuration
+        if [ -f "$CONFIG_FILE" ]; then
+          echo "📋 Checking configuration file: $CONFIG_FILE"
+          
+          if command -v yq >/dev/null 2>&1; then
+            CONFIG_TYPE=$(yq eval '.project.type' "$CONFIG_FILE" 2>/dev/null)
+            if [ -n "$CONFIG_TYPE" ] && [ "$CONFIG_TYPE" != "null" ]; then
+              echo "✅ Project type explicitly set in config: $CONFIG_TYPE"
+              PROJECT_TYPE="$CONFIG_TYPE"
+              DETECTION_METHOD="config"
+            fi
+          else
+            # Fallback parsing without yq
+            if grep -q "type:" "$CONFIG_FILE"; then
+              CONFIG_TYPE=$(grep -A 5 "project:" "$CONFIG_FILE" | grep "type:" | sed 's/.*type:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              if [ -n "$CONFIG_TYPE" ]; then
+                echo "✅ Project type explicitly set in config: $CONFIG_TYPE"
+                PROJECT_TYPE="$CONFIG_TYPE"
+                DETECTION_METHOD="config"
+              fi
+            fi
+          fi
         fi
+        
+        # If not set in config, auto-detect from project files
+        if [ -z "$PROJECT_TYPE" ]; then
+          echo "🔍 Auto-detecting from project files..."
+          
+          # Detection priority order as per design
+          if [ -f "shopware-project.yml" ]; then
+            echo "✅ Found shopware-project.yml - Shopware project detected"
+            PROJECT_TYPE="shopware"
+            DETECTION_METHOD="file"
+          elif [ -f "artisan" ]; then
+            echo "✅ Found artisan file - Laravel project detected"
+            PROJECT_TYPE="laravel"
+            DETECTION_METHOD="file"
+          elif [ -f "symfony.lock" ]; then
+            echo "✅ Found symfony.lock - Symfony project detected"
+            PROJECT_TYPE="symfony"
+            DETECTION_METHOD="file"
+          else
+            echo "⚠️  No specific project files found - defaulting to Shopware"
+            PROJECT_TYPE="shopware"
+            DETECTION_METHOD="default"
+          fi
+        fi
+        
+        # Validate project type
+        case "$PROJECT_TYPE" in
+          "shopware"|"laravel"|"symfony"|"generic")
+            echo "✅ Valid project type: $PROJECT_TYPE (detected via: $DETECTION_METHOD)"
+            ;;
+          *)
+            echo "❌ Error: Invalid project type '$PROJECT_TYPE'"
+            echo "   Valid options: shopware, laravel, symfony, generic"
+            exit 1
+            ;;
+        esac
+        
+        echo "type=$PROJECT_TYPE" >> $GITHUB_OUTPUT
+        echo "detection_method=$DETECTION_METHOD" >> $GITHUB_OUTPUT
