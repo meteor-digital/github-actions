@@ -19,6 +19,9 @@ on:
       composer_auth:
         description: 'Composer authentication JSON'
         required: true
+      test_env_vars:
+        description: 'Additional environment variables for testing (multiline string with KEY=value pairs)'
+        required: false
 
 jobs:
   # Setup job to generate dependencies cache for parallel jobs
@@ -53,11 +56,9 @@ jobs:
             
             # Parse enabled tools from configuration
             if command -v yq >/dev/null 2>&1; then
-              ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools' "$CONFIG_FILE" 2>/dev/null)
-              if [ "$ENABLED_TOOLS" != "null" ]; then
-                # Convert YAML array to JSON array
-                ENABLED_TOOLS=$(echo "$ENABLED_TOOLS" | yq eval -o=json '.')
-              else
+              # Extract and convert YAML array directly to JSON
+              ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools | @json' "$CONFIG_FILE" 2>/dev/null)
+              if [ "$ENABLED_TOOLS" = "null" ] || [ -z "$ENABLED_TOOLS" ]; then
                 ENABLED_TOOLS="$DEFAULT_TOOLS"
               fi
             else
@@ -79,9 +80,9 @@ jobs:
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
-          composer_auth: ${{ secrets.composer_auth }}
+          composer_auth: ${{ secrets.composer_auth }}  
   
-  # Basic file validation tasks + PHPUnuhi validation (grouped for efficiency)
+# Basic file validation tasks + PHPUnuhi validation (grouped for efficiency)
   file-validation:
     name: '📋 Validate Files & Translations'
     needs: setup
@@ -173,25 +174,36 @@ jobs:
             tests/**/*.php
             **/*.php
 
+      - name: Check PHP-CS-Fixer config exists
+        if: contains(fromJson(needs.setup.outputs.enabled_tools), 'php-cs-fixer')
+        id: check-php-cs-fixer-config
+        shell: bash
+        run: |
+          if [ -f ".php-cs-fixer.php" ] || [ -f ".php-cs-fixer.dist.php" ]; then
+            echo "config_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "config_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run PHP-CS-Fixer on changed files
-        if: contains(fromJson(needs.setup.outputs.enabled_tools), 'php-cs-fixer') && hashFiles('.php-cs-fixer.php') != ''
+        if: contains(fromJson(needs.setup.outputs.enabled_tools), 'php-cs-fixer') && steps.check-php-cs-fixer-config.outputs.config_exists == 'true' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
         shell: bash
         run: |
           echo "🎨 Running PHP-CS-Fixer..."
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation --config=.php-cs-fixer.php ${{ steps.changed-files.outputs.all_changed_files }}
+            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  Checking all files"
-            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation --config=.php-cs-fixer.php
-          fi
-          
+            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation
+          fi        
+  
   # Psalm static analysis (slow task)
   psalm:
     name: '🔍 Psalm Static Analysis'
     needs: setup
     runs-on: ubuntu-latest
-    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'psalm') && hashFiles('psalm.xml') != ''
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'psalm')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -215,6 +227,7 @@ jobs:
             **/*.php
 
       - name: Run Psalm on changed files
+        if: hashFiles('psalm.xml') != '' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
         shell: bash
         run: |
           echo "🔍 Running Psalm static analysis..."
@@ -231,7 +244,7 @@ jobs:
     name: '🔍 PHPStan Static Analysis'
     needs: setup
     runs-on: ubuntu-latest
-    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpstan') && hashFiles('phpstan.neon') != ''
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpstan')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -255,6 +268,7 @@ jobs:
             **/*.php
 
       - name: Run PHPStan on changed files
+        if: hashFiles('phpstan.neon') != '' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
         shell: bash
         run: |
           echo "🔍 Running PHPStan static analysis..."
@@ -271,7 +285,7 @@ jobs:
     name: '🛠️ Rector Code Analysis'
     needs: setup
     runs-on: ubuntu-latest
-    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'rector') && hashFiles('rector.php') != ''
+    if: contains(fromJson(needs.setup.outputs.enabled_tools), 'rector')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -295,6 +309,7 @@ jobs:
             **/*.php
 
       - name: Run Rector on changed files
+        if: hashFiles('rector.php') != '' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
         shell: bash
         run: |
           echo "🛠️ Running Rector code analysis..."
@@ -304,8 +319,8 @@ jobs:
           else
             echo "  Analyzing all files"
             php ./vendor/bin/rector process --dry-run --no-progress-bar
-          fi
-  
+          fi 
+ 
   unit-tests:
     name: '🧪 PHP Unit Tests'
     needs: setup
@@ -369,26 +384,13 @@ jobs:
           echo "🔧 Configuring test environment..."
           echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
           echo 'MESSENGER_TRANSPORT_DSN=amqp://guest:guest@127.0.0.1:5672' >> .env.test.local
-      
-          # Add project-specific environment variables from quality config
-          if [ -f "${{ inputs.config_path }}" ]; then
-            if command -v yq >/dev/null 2>&1; then
-              # Parse additional environment variables from quality config
-              ADDITIONAL_ENV_VARS=$(yq eval '.quality_checks.test_environment.env_vars[]?' "${{ inputs.config_path }}" 2>/dev/null || true)
-              if [ -n "$ADDITIONAL_ENV_VARS" ]; then
-                echo "Adding project-specific environment variables..."
-                echo "$ADDITIONAL_ENV_VARS" | while IFS= read -r env_var; do
-                  if [ -n "$env_var" ]; then
-                    echo "$env_var" >> .env.test.local
-                  fi
-                done
-              fi
-            else
-              # Fallback parsing without yq
-              if grep -q "test_environment:" "${{ inputs.config_path }}"; then
-                echo "Found test environment config, but yq not available for parsing"
-              fi
-            fi
+          
+          # Add additional test environment variables from secret
+          if [ -n "${{ secrets.test_env_vars }}" ]; then
+            echo "🔐 Adding test environment variables from secret..."
+            echo "${{ secrets.test_env_vars }}" >> .env.test.local
+          else
+            echo "💡 No additional test environment variables provided"
           fi
       
       - name: Run integration tests

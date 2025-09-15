@@ -129,7 +129,7 @@ jobs:
           prerelease: false
           
       - name: Send success notification
-        if: success() && secrets.notification_webhook
+        if: success()
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
@@ -142,7 +142,7 @@ jobs:
             **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
       - name: Send failure notification
-        if: failure() && secrets.notification_webhook
+        if: failure()
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
