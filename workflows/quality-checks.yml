@@ -370,6 +370,27 @@ jobs:
           echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
           echo 'MESSENGER_TRANSPORT_DSN=amqp://guest:guest@127.0.0.1:5672' >> .env.test.local
       
+          # Add project-specific environment variables from quality config
+          if [ -f "${{ inputs.config_path }}" ]; then
+            if command -v yq >/dev/null 2>&1; then
+              # Parse additional environment variables from quality config
+              ADDITIONAL_ENV_VARS=$(yq eval '.quality_checks.test_environment.env_vars[]?' "${{ inputs.config_path }}" 2>/dev/null || true)
+              if [ -n "$ADDITIONAL_ENV_VARS" ]; then
+                echo "Adding project-specific environment variables..."
+                echo "$ADDITIONAL_ENV_VARS" | while IFS= read -r env_var; do
+                  if [ -n "$env_var" ]; then
+                    echo "$env_var" >> .env.test.local
+                  fi
+                done
+              fi
+            else
+              # Fallback parsing without yq
+              if grep -q "test_environment:" "${{ inputs.config_path }}"; then
+                echo "Found test environment config, but yq not available for parsing"
+              fi
+            fi
+          fi
+      
       - name: Run integration tests
         shell: bash
         run: |

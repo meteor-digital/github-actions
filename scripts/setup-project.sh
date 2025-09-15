@@ -2,12 +2,43 @@
 
 # Setup script for integrating generic CI/CD workflows into a new project
 # Usage: Run this script from your project root directory
-# ./path/to/github-actions/scripts/setup-project.sh [project-type] [hosting-provider]
+# ./path/to/github-actions/scripts/setup-project.sh <project-type> <hosting-provider>
 
 set -e
 
-PROJECT_TYPE=${1:-"shopware"}
-HOSTING_PROVIDER=${2:-"level27"}
+# Function to display help message
+display_help() {
+    echo "Usage: $0 <project-type> <hosting-provider>"
+    echo
+    echo "Sets up generic CI/CD workflows for a new project by copying template"
+    echo "workflow and configuration files into the current directory."
+    echo
+    echo "Arguments:"
+    echo "  project-type      The type of the project (e.g., shopware, laravel, symfony)."
+    echo "                    This determines which template files are used."
+    echo "  hosting-provider  The hosting provider (e.g., level27, byte, hipex, hostedpower)."
+    echo "                    This sets the 'provider' in the deployment-config.yml."
+    echo
+    echo "Options:"
+    echo "  -h, --help        Display this help message and exit."
+    exit 0
+}
+
+# Check for help flag
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+    display_help
+fi
+
+# Validate required arguments
+if [ -z "$1" ] || [ -z "$2" ]; then
+    echo "Error: Missing required arguments." >&2
+    echo "Please provide both a project type and a hosting provider." >&2
+    echo >&2
+    display_help
+fi
+
+PROJECT_TYPE=$1
+HOSTING_PROVIDER=$2
 
 # Get the directory where this script is located (the github-actions repo)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,12 +48,12 @@ echo "Setting up generic CI/CD workflows for $PROJECT_TYPE project with $HOSTING
 echo "Using templates from: $ACTIONS_REPO_DIR"
 
 # Verify we're in a project directory (not the actions repo)
-if [ "$(basename "$(pwd)")" = "generic-ci-cd-workflows" ] || [ -f "actions/setup-environment/action.yml" ]; then
-    echo "❌ Error: This script should be run from your project directory, not from the github-actions repository"
-    echo ""
-    echo "Usage:"
-    echo "  cd /path/to/your/project"
-    echo "  /path/to/github-actions/scripts/setup-project.sh $PROJECT_TYPE $HOSTING_PROVIDER"
+if  [ -f "actions/setup-environment/action.yml" ]; then
+    echo "❌ Error: This script should be run from your project directory, not from the github-actions repository" >&2
+    echo "" >&2
+    echo "Usage:" >&2
+    echo " cd /path/to/your/project" >&2
+    echo " ./path/to/github-actions/scripts/setup-project.sh <project-type> <hosting-provider>" >&2
     exit 1
 fi
 
@@ -47,17 +78,15 @@ if [ -d "$TEMPLATE_DIR" ]; then
     fi
 
 else
-    echo "Warning: No templates found for project type '$PROJECT_TYPE'"
-    echo "Available project types:"
+    echo "Warning: No templates found for project type '$PROJECT_TYPE'" >&2
+    echo "Available project types:" >&2
     ls "$ACTIONS_REPO_DIR/templates/" 2>/dev/null || echo "No templates directory found"
     exit 1
 fi
 
-# Update hosting provider in deployment config if different from default
-if [ "$HOSTING_PROVIDER" != "level27" ]; then
-    echo "Updating hosting provider to $HOSTING_PROVIDER..."
-    sed -i "s/provider: \"level27\"/provider: \"$HOSTING_PROVIDER\"/" .github/deployment-config.yml
-fi
+# Update hosting provider in deployment config
+echo "Setting hosting provider to $HOSTING_PROVIDER..."
+sed -i "s/{{HOSTING_PROVIDER}}/$HOSTING_PROVIDER/g" .github/deployment-config.yml
 
 echo ""
 echo "✅ Setup completed successfully!"

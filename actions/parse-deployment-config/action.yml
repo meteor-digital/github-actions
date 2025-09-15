@@ -162,8 +162,19 @@ runs:
             # Parse hosting configuration
             PROVIDER=$(yq eval ".hosting.provider" "$CONFIG_FILE" 2>/dev/null)
             SSH_PORT=$(yq eval ".hosting.ssh_port" "$CONFIG_FILE" 2>/dev/null)
+            if [ -z "$SSH_PORT" ] || [ "$SSH_PORT" = "null" ]; then
+              SSH_PORT="22"
+            fi
             PHP_SERVICE=$(yq eval ".hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
-            MESSENGER_WORKER_ID=$(yq eval ".hosting.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
+            
+            # Parse messenger worker ID - check environment-specific first, then fall back to global
+            # Try yq eval syntax first (mikefarah/yq), then fall back to jq-style syntax
+            ENV_MESSENGER_WORKER_ID=$(yq eval ".environments.$ENVIRONMENT.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null || yq ".environments.$ENVIRONMENT.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null | tr -d '"')
+            if [ -n "$ENV_MESSENGER_WORKER_ID" ] && [ "$ENV_MESSENGER_WORKER_ID" != "null" ]; then
+              MESSENGER_WORKER_ID="$ENV_MESSENGER_WORKER_ID"
+            else
+              MESSENGER_WORKER_ID=$(yq eval ".hosting.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null || yq ".hosting.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null | tr -d '"')
+            fi
             
             # Parse deployment overrides (override defaults)
             PROJECT_KEEP_RELEASES=$(yq eval ".deployment.cleanup.keep_releases" "$CONFIG_FILE" 2>/dev/null)
@@ -178,6 +189,9 @@ runs:
               HOST=$(echo "$ENV_SECTION" | grep "host:" | sed 's/.*host:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
               PATH=$(echo "$ENV_SECTION" | grep "path:" | sed 's/.*path:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
               MAINTENANCE_MODE=$(echo "$ENV_SECTION" | grep "maintenance_mode:" | sed 's/.*maintenance_mode:[[:space:]]*\([^[:space:]]*\).*/\1/' | head -1)
+              
+              # Parse environment-specific messenger worker ID
+              ENV_MESSENGER_WORKER_ID=$(echo "$ENV_SECTION" | grep "messenger_worker_id:" | sed 's/.*messenger_worker_id:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
             fi
             
             # Parse hosting configuration
@@ -185,8 +199,18 @@ runs:
             if [ -n "$HOSTING_SECTION" ]; then
               PROVIDER=$(echo "$HOSTING_SECTION" | grep "provider:" | sed 's/.*provider:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
               SSH_PORT=$(echo "$HOSTING_SECTION" | grep "ssh_port:" | sed 's/.*ssh_port:[[:space:]]*\([0-9]*\).*/\1/' | head -1)
+              # Default SSH port to 22 if not specified
+              if [ -z "$SSH_PORT" ]; then
+                SSH_PORT="22"
+              fi
               PHP_SERVICE=$(echo "$HOSTING_SECTION" | grep "php_service:" | sed 's/.*php_service:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
-              MESSENGER_WORKER_ID=$(echo "$HOSTING_SECTION" | grep "messenger_worker_id:" | sed 's/.*messenger_worker_id:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              
+              # Parse messenger worker ID - use environment-specific if found, otherwise use global
+              if [ -n "$ENV_MESSENGER_WORKER_ID" ]; then
+                MESSENGER_WORKER_ID="$ENV_MESSENGER_WORKER_ID"
+              else
+                MESSENGER_WORKER_ID=$(echo "$HOSTING_SECTION" | grep "messenger_worker_id:" | sed 's/.*messenger_worker_id:[[:space:]]*["\x27]\?\([^"\x27]*\)["\x27]\?.*/\1/' | head -1)
+              fi
             fi
             
             # Parse deployment overrides

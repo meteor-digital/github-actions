@@ -1,6 +1,5 @@
 # Example deploy workflow for Shopware projects
 # This file demonstrates how to reference the reusable deploy workflow
-# Replace 'meteor-digital/github-actions' with your actual workflows repository
 
 name: Deploy
 
@@ -21,6 +20,10 @@ on:
           - test
           - acc
           - prod
+      version:
+        description: 'Version to deploy (leave empty for latest)'
+        required: false
+        type: string
 
 jobs:
   determine-environment:
@@ -29,19 +32,36 @@ jobs:
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       should_deploy: ${{ steps.env.outputs.should_deploy }}
+      artifact_name: ${{ steps.env.outputs.artifact_name }}
+      artifact_run_id: ${{ steps.env.outputs.artifact_run_id }}
     steps:
-      - name: Determine environment
+      - name: Determine environment and artifact
         id: env
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
             echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == refs/heads/test/* ]]; then
-            echo "environment=test" >> $GITHUB_OUTPUT
+            # For manual deployments, no artifact needed (uses release assets)
+            echo "artifact_name=" >> $GITHUB_OUTPUT
+            echo "artifact_run_id=" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Determine environment and artifact based on branch
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+            echo "Determining deployment for branch: $BRANCH"
+            
+            if [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              # Release branch -> ACC environment
+              VERSION="${BASH_REMATCH[1]}"
+              echo "environment=acc" >> $GITHUB_OUTPUT
+              echo "artifact_name=acc-build-${VERSION}" >> $GITHUB_OUTPUT
+            elif [[ "$BRANCH" =~ ^test/ ]]; then
+              # Test branch -> TEST environment
+              echo "environment=test" >> $GITHUB_OUTPUT
+              echo "artifact_name=test-build" >> $GITHUB_OUTPUT
+            fi
+            
             echo "should_deploy=true" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" =~ refs/heads/release/[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "environment=acc" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "artifact_run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
           else
             echo "should_deploy=false" >> $GITHUB_OUTPUT
           fi
@@ -53,8 +73,10 @@ jobs:
     with:
       environment: ${{ needs.determine-environment.outputs.environment }}
       config_path: ".github/deployment-config.yml"
-      artifact_name: "build-artifact"
+      artifact_name: ${{ needs.determine-environment.outputs.artifact_name }}
+      artifact_run_id: ${{ needs.determine-environment.outputs.artifact_run_id }}
+      release_version: ${{ github.event.inputs.version }}
     secrets:
       ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-      environment_secrets: ${{ secrets.ENVIRONMENT_SECRETS }}
+      ssh_user: ${{ secrets.SSH_USER }}
       notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}

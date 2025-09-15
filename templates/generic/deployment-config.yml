@@ -18,7 +18,7 @@ environments:
     maintenance_mode: false
 
 hosting:
-  provider: "generic"  # Use generic provider for custom setups
+  provider: "{{HOSTING_PROVIDER}}"  # Use generic provider for custom setups
   ssh_port: 22
   php_service: "php-fpm"
   custom_commands:

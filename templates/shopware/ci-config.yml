@@ -36,4 +36,3 @@ build:
   
 artifacts:
   retention_days: 7  # Keep artifacts for 7 days
-  naming_pattern: "{environment}-build-{version}"  # Available: {environment}, {version}, {project}

@@ -11,6 +11,14 @@ quality_checks:
     - "phpunit"           # Uses phpunit.xml or phpunit.xml.dist
     - "composer-validate" # Validates composer.json
     
+  # Test environment configuration
+  test_environment:
+    # Additional environment variables for .env.test.local
+    # These will be added to the standard DATABASE_URL and MESSENGER_TRANSPORT_DSN
+    env_vars:
+      # Add more project-specific environment variables as needed
+      # - 'CUSTOM_API_KEY="${{ secrets.CUSTOM_API_KEY }}"'
+    
   # Optional: Custom quality checks specific to your project
   # custom_checks:
   #   - name: "phpunuhi"

@@ -1,6 +1,5 @@
 # Example PR checks workflow for Shopware projects
 # This file demonstrates how to reference the reusable PR checks workflow
-# Replace 'meteor-digital/github-actions' with your actual workflows repository
 
 name: PR Checks
 

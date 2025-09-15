@@ -6,23 +6,21 @@ environments:
   test:
     host: "test.example.com"  # Replace with actual hostname
     path: "/var/www/test"  # Replace with actual path
-    maintenance_mode: true
+    messenger_worker_id: "1"
     
   acc:
     host: "acc.example.com"  # Replace with actual hostname
     path: "/var/www/acc"  # Replace with actual path
-    maintenance_mode: true
+    messenger_worker_id: "2"
     
   prod:
     host: "prod.example.com"  # Replace with actual hostname
     path: "/var/www/prod"  # Replace with actual path
-    maintenance_mode: true
+    messenger_worker_id: "3"
 
 hosting:
-  provider: "level27"  # level27, byte, hipex, hostedpower, generic
-  ssh_port: 22
+  provider: "{{HOSTING_PROVIDER}}"  # level27, byte, hipex, hostedpower, generic
   php_service: "php8.1-fpm"
-  messenger_worker_id: "1"  # For Shopware messenger workers (Level27 specific)
 
 # Optional: Override framework defaults
 # Shopware defaults are automatically applied:

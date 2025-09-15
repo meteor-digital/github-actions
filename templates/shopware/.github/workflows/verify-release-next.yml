@@ -1,6 +1,5 @@
 # Example verify-release-next workflow for Shopware projects
 # This file demonstrates how to reference the reusable verify-release-next workflow
-# Replace 'meteor-digital/github-actions' with your actual workflows repository
 
 name: Verify Release Next
 
