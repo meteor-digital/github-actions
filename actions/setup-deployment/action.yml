@@ -27,7 +27,7 @@ runs:
       id: vars
       shell: bash
       run: |
-        # Format date and set as output (matching LensOnline pattern)
+        # Format date and set as output for release directory naming
         DEPLOY_DATE=$(date +'%Y%m%d.%H%M')
         echo "deploy_date=$DEPLOY_DATE" >> $GITHUB_OUTPUT
         

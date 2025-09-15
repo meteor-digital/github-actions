@@ -208,7 +208,7 @@ runs:
           && ${{ steps.config.outputs.maintenance_disable_cmd }}
           || echo 'Skipping maintenance disable'
           
-          # Clear cache for Shopware/Symfony projects (LensOnline pattern)
+          # Clear cache for Shopware/Symfony projects
           if [ '$PROJECT_TYPE' = 'shopware' ] || [ '$PROJECT_TYPE' = 'symfony' ]; then
             cd $DEPLOY_PATH/releases/$DEPLOY_DATE
             && bin/console cache:clear

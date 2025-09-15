@@ -55,7 +55,7 @@ Restarts services based on hosting provider:
 
 ## Hosting Providers
 
-### Level27 (Primary - LensOnline Provider)
+### Level27
 ```bash
 sudo /usr/sbin/service php8.1-fpm reload
 # For Shopware/Symfony: restart messenger workers

@@ -1,5 +1,5 @@
 name: 'Create Symlinks'
-description: 'Creates symlinks for shared folders following LensOnline patterns'
+description: 'Creates symlinks for shared folders based on framework-specific defaults'
 
 inputs:
   host:
@@ -39,7 +39,7 @@ runs:
         # Create .env.local symlink first
         ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "cd $DEPLOY_PATH/$RELEASE_DIR && ln -sf $DEPLOY_PATH/shared/.env.local .env.local"
         
-        # Remove empty folders to create symlinks (LensOnline pattern)
+        # Remove empty folders to create symlinks
         ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
           cd '$DEPLOY_PATH/$RELEASE_DIR'
           while IFS= read -r folder; do

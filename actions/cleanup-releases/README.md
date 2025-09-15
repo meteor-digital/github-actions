@@ -1,10 +1,10 @@
 # Cleanup Old Releases Action
 
-Cleans up old releases following the LensOnline cleanup pattern to manage disk space.
+Cleans up old releases following proven cleanup patterns to manage disk space.
 
 ## Features
 
-- **LensOnline Pattern**: Uses the exact cleanup logic from LensOnline
+- **Proven Pattern**: Uses battle-tested cleanup logic
 - **Configurable Retention**: Keeps specified number of releases
 - **Safe Operations**: Only removes releases when count exceeds limit
 - **Chronological Cleanup**: Removes oldest releases first
@@ -45,7 +45,7 @@ TAIL_FROM_LINE=$((keep_releases + 1))
 ```
 
 ### 3. Remove Old Releases (if needed)
-Following the LensOnline pattern:
+Following the proven pattern:
 ```bash
 cd /var/www/app/releases/
 ls -A1 | sort -rn | tail -n +$TAIL_FROM_LINE | xargs -r rm -rf

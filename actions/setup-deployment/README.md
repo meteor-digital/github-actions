@@ -1,6 +1,6 @@
 # Setup Deployment Action
 
-Sets up SSH environment and prepares deployment variables following LensOnline patterns.
+Sets up SSH environment and prepares deployment variables following proven deployment patterns.
 
 ## Features
 
@@ -49,9 +49,9 @@ Sets up SSH environment and prepares deployment variables following LensOnline p
    - Uses `webfactory/ssh-agent` for SSH key management
    - Enables SSH key authentication for subsequent steps
 
-## LensOnline Pattern
+## Date Format Pattern
 
-The deployment date format matches the original LensOnline pattern:
+The deployment date format follows a proven pattern:
 - Format: `YYYYMMDD.HHMM` (e.g., `20231215.1430`)
 - Used for release directory naming
 - Ensures chronological ordering of releases

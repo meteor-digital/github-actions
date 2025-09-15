@@ -1,6 +1,6 @@
 # Deploy to Host Action
 
-A production-ready GitHub Action for deploying applications to remote hosts using proven deployment patterns from the LensOnline project.
+A production-ready GitHub Action for deploying applications to remote hosts using proven deployment patterns.
 
 ## Features
 
@@ -11,7 +11,7 @@ A production-ready GitHub Action for deploying applications to remote hosts usin
 - **Service Management**: Framework and provider-specific service restart logic
 - **Maintenance Mode**: Console command-based maintenance mode for Shopware/Symfony
 - **Database Migrations**: Framework-specific migration commands
-- **Proven Patterns**: Based on battle-tested LensOnline deployment workflows
+- **Proven Patterns**: Based on battle-tested deployment workflows
 - **Sentry Integration**: Automatic Sentry release tracking
 
 ## Usage
@@ -116,20 +116,20 @@ hosting:
 
 - **Minimal Configuration**: Only specify what's different from proven defaults
 - **Automatic Updates**: Framework defaults are embedded in the action and updated with new releases
-- **Proven Patterns**: Defaults are based on battle-tested LensOnline deployment patterns
+- **Proven Patterns**: Defaults are based on battle-tested deployment patterns
 - **Hard Validation**: Fails fast if unsupported project type is detected
 - **No External Dependencies**: All defaults are embedded, no external file dependencies
 
 
 ## Deployment Process
 
-The action follows this deployment process (based on proven LensOnline patterns):
+The action follows this deployment process (based on proven patterns):
 
 1. **Project Detection**: Auto-detect project type and load framework defaults
 2. **Configuration Parsing**: Read and validate deployment configuration, override defaults
 3. **SSH Setup**: Setup SSH known_hosts for secure connections
 4. **File Synchronization**: Sync files using rsync-deployments action
-5. **Shared Folders**: Create symlinks to shared folders (LensOnline pattern)
+5. **Shared Folders**: Create symlinks to shared folders
 6. **Cache Warmup**: Warm up cache for Shopware/Symfony projects (project-type specific)
 7. **Pre-deployment Commands**: Execute configured pre-deployment commands
 8. **Maintenance Mode**: Enable maintenance mode using framework-specific commands
@@ -140,7 +140,7 @@ The action follows this deployment process (based on proven LensOnline patterns)
 13. **Post-deployment Commands**: Execute configured post-deployment commands
 14. **Service Restart**: Restart services based on hosting provider
 15. **Maintenance Mode**: Disable maintenance mode using framework-specific commands
-16. **Cleanup**: Remove old releases using LensOnline cleanup pattern
+16. **Cleanup**: Remove old releases using proven cleanup pattern
 17. **Failure Handling**: On failure, disable maintenance and clear cache (no rollback)
 
 ## Framework Support
@@ -165,7 +165,7 @@ The action follows this deployment process (based on proven LensOnline patterns)
 
 ## Hosting Provider Support
 
-### Level27 (Primary - LensOnline Provider)
+### Level27
 - **PHP Service**: `sudo /usr/sbin/service php8.1-fpm reload`
 - **Messenger Workers**: `systemctl --user start worker-{id}.service`
 
@@ -190,7 +190,7 @@ The action follows this deployment process (based on proven LensOnline patterns)
 
 ## Error Handling
 
-The action includes comprehensive error handling based on LensOnline patterns:
+The action includes comprehensive error handling based on proven patterns:
 
 - **SSH Connection Failures**: Validates SSH setup before proceeding
 - **Configuration Errors**: Validates required configuration and fails fast
@@ -200,14 +200,14 @@ The action includes comprehensive error handling based on LensOnline patterns:
 
 ## Failure Recovery
 
-On deployment failure, the action automatically (following LensOnline pattern):
+On deployment failure, the action automatically:
 
 1. Disables maintenance mode using console commands
 2. Clears cache for Shopware/Symfony projects
-3. Does NOT rollback symlink (following LensOnline approach)
+3. Does NOT rollback symlink (following proven approach)
 4. Reports failure status
 
-**Note**: Unlike some deployment systems, this action follows the LensOnline pattern of not rolling back the symlink on failure, as migrations may have already been applied.
+**Note**: Unlike some deployment systems, this action follows the proven pattern of not rolling back the symlink on failure, as migrations may have already been applied.
 
 ## Examples
 

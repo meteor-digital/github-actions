@@ -1,11 +1,11 @@
 # Activate Release Action
 
-Activates a new release with atomic symlink switching and Sentry integration following LensOnline patterns.
+Activates a new release with atomic symlink switching and Sentry integration following proven patterns.
 
 ## Features
 
 - **Atomic Deployment**: Zero-downtime release activation
-- **LensOnline Pattern**: Follows the exact symlink switching pattern
+- **Proven Pattern**: Follows battle-tested symlink switching pattern
 - **Sentry Integration**: Updates Sentry release environment variable
 - **Safe Operations**: Handles missing current symlink gracefully
 
@@ -35,7 +35,7 @@ Activates a new release with atomic symlink switching and Sentry integration fol
 ## What It Does
 
 ### 1. Atomic Symlink Switch
-Following the LensOnline pattern:
+Following the proven pattern:
 
 ```bash
 # Remove existing current symlink (if exists)

@@ -1,11 +1,11 @@
 # Create Symlinks Action
 
-Creates symlinks for shared folders following proven LensOnline deployment patterns.
+Creates symlinks for shared folders following proven deployment patterns.
 
 ## Features
 
 - **Shared Folder Management**: Creates symlinks to shared directories
-- **LensOnline Pattern**: Follows the exact symlink creation pattern from LensOnline
+- **Proven Pattern**: Follows battle-tested symlink creation patterns
 - **Environment File**: Automatically creates .env.local symlink
 - **Safe Operations**: Removes existing directories before creating symlinks
 

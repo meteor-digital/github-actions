@@ -1,6 +1,6 @@
 # Composer Setup Action
 
-This composite action installs Composer dependencies with an optimized caching strategy. It follows the same pattern as the LensOnline composer-setup action and is designed to be called by the setup-environment action.
+This composite action installs Composer dependencies with an optimized caching strategy. It follows proven patterns and is designed to be called by the setup-environment action.
 
 ## Features
 

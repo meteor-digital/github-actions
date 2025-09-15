@@ -1,5 +1,5 @@
 name: 'Cleanup Old Releases'
-description: 'Cleans up old releases following LensOnline patterns'
+description: 'Cleans up old releases keeping a configurable number of previous releases'
 
 inputs:
   host:
