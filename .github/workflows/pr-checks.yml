@@ -48,7 +48,7 @@ jobs:
 
       - name: Validate configuration files
         if: steps.check_config.outputs.any_changed == 'true'
-        uses: meteor-digital/github-actions/actions/validate-config@main
+        uses: meteor-digital/github-actions/.github/actions/validate-config@main
         with:
           config_directory: '.github'
           fail_on_missing: false  # Don't fail on missing files in PR checks
@@ -63,7 +63,7 @@ jobs:
 
   quality-checks:
     name: 'Quality checks'
-    uses: meteor-digital/github-actions/workflows/quality-checks.yml@main
+    uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
     with:
       config_path: ${{ inputs.config_path }}
       check_changed_files_only: true

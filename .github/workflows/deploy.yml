@@ -47,7 +47,7 @@ jobs:
 
       - name: Read configuration
         id: config
-        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
         with:
           config_file: ${{ inputs.config_path }}
 
@@ -76,7 +76,7 @@ jobs:
         
       - name: Send start notification
         if: secrets.notification_webhook
-        uses: meteor-digital/github-actions/actions/notify-teams@main
+        uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "FFFF00"
@@ -103,7 +103,7 @@ jobs:
             
       - name: Deploy to host
         id: deployment
-        uses: meteor-digital/github-actions/actions/deploy-to-host@main
+        uses: meteor-digital/github-actions/.github/actions/deploy-to-host@main
         with:
           config_file: ${{ inputs.config_path }}
           environment: ${{ inputs.environment }}
@@ -113,7 +113,7 @@ jobs:
           
       - name: Send success notification
         if: success() && secrets.notification_webhook
-        uses: meteor-digital/github-actions/actions/notify-teams@main
+        uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "00FF00"
@@ -126,7 +126,7 @@ jobs:
           
       - name: Send failure notification
         if: failure() && secrets.notification_webhook
-        uses: meteor-digital/github-actions/actions/notify-teams@main
+        uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "FF0000"

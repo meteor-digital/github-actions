@@ -6,7 +6,7 @@ Simple action to send messages to Teams/Slack channels.
 
 ```yaml
 - name: Send notification
-  uses: meteor-digital/github-actions/actions/notify-teams@main
+  uses: meteor-digital/github-actions/.github/actions/notify-teams@main
   with:
     webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
     message: "✅ Build for **my-project** completed successfully"
@@ -27,7 +27,7 @@ Simple action to send messages to Teams/Slack channels.
 ### Success Notification
 ```yaml
 - name: Notify success
-  uses: meteor-digital/github-actions/actions/notify-teams@main
+  uses: meteor-digital/github-actions/.github/actions/notify-teams@main
   with:
     webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
     message: "✅ Deploy **my-project** to **production** SUCCESS"
@@ -37,7 +37,7 @@ Simple action to send messages to Teams/Slack channels.
 ### Failure Notification
 ```yaml
 - name: Notify failure
-  uses: meteor-digital/github-actions/actions/notify-teams@main
+  uses: meteor-digital/github-actions/.github/actions/notify-teams@main
   with:
     webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
     message: "❌ Build for **my-project** failed"
@@ -47,7 +47,7 @@ Simple action to send messages to Teams/Slack channels.
 ### Rich Notification with Links
 ```yaml
 - name: Notify with details
-  uses: meteor-digital/github-actions/actions/notify-teams@main
+  uses: meteor-digital/github-actions/.github/actions/notify-teams@main
   with:
     webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
     message: |
@@ -64,7 +64,7 @@ Simple action to send messages to Teams/Slack channels.
 ### In-Progress Notification
 ```yaml
 - name: Notify deployment started
-  uses: meteor-digital/github-actions/actions/notify-teams@main
+  uses: meteor-digital/github-actions/.github/actions/notify-teams@main
   with:
     webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
     message: "🚀 Deploy **my-project** to **production** started"
@@ -96,7 +96,7 @@ Since this action just sends whatever message you provide, you compose the messa
     echo "name=$PROJECT_NAME" >> $GITHUB_OUTPUT
 
 - name: Send notification
-  uses: meteor-digital/github-actions/actions/notify-teams@main
+  uses: meteor-digital/github-actions/.github/actions/notify-teams@main
   with:
     webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
     message: "✅ Build for **${{ steps.project.outputs.name }}** completed"

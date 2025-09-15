@@ -90,7 +90,7 @@ jobs:
     name: '🔍 Comprehensive Quality Validation'
     needs: check-commit-changes
     if: needs.check-commit-changes.outputs.should_validate == 'true'
-    uses: meteor-digital/github-actions/workflows/quality-checks.yml@main
+    uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
     with:
       config_path: ${{ inputs.config_path }}
       check_changed_files_only: false
@@ -152,12 +152,12 @@ jobs:
 
       - name: Read CI configuration for project name
         id: ci_config
-        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
         with:
           config_file: '.github/ci-config.yml'
 
       - name: Send Teams notification
-        uses: meteor-digital/github-actions/actions/notify-teams@main
+        uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "FF0000"

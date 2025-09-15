@@ -20,7 +20,7 @@ on:
 
 jobs:
   verify-release-next:
-    uses: meteor-digital/github-actions/workflows/verify-release-next.yml@main
+    uses: meteor-digital/github-actions/.github/workflows/verify-release-next.yml@main
     with:
       branch_name: ${{ github.event.inputs.branch_name || 'release/next' }}
       config_path: ".github/quality-config.yml"

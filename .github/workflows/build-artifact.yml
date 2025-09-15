@@ -35,7 +35,7 @@ jobs:
 
       - name: Read configuration
         id: config
-        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
         with:
           config_file: ${{ inputs.config_path }}
 
@@ -64,7 +64,7 @@ jobs:
   quality-checks:
     name: 'Quality checks'
     needs: [setup]
-    uses: meteor-digital/github-actions/workflows/quality-checks.yml@main
+    uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
     with:
       config_path: '.github/quality-config.yml'
       check_changed_files_only: false
@@ -82,14 +82,14 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: ${{ inputs.build_type == 'development' && 'yes' || 'no' }}
           composer_auth: ${{ secrets.composer_auth }}
           
       - name: Build project
-        uses: meteor-digital/github-actions/actions/build-project@main
+        uses: meteor-digital/github-actions/.github/actions/build-project@main
         with:
           config_file: ${{ inputs.config_path }}
           
@@ -130,7 +130,7 @@ jobs:
           
       - name: Send success notification
         if: success() && secrets.notification_webhook
-        uses: meteor-digital/github-actions/actions/notify-teams@main
+        uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "00FF00"
@@ -143,7 +143,7 @@ jobs:
           
       - name: Send failure notification
         if: failure() && secrets.notification_webhook
-        uses: meteor-digital/github-actions/actions/notify-teams@main
+        uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "FF0000"

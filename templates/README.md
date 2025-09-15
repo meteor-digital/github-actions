@@ -111,7 +111,7 @@ on:
 
 jobs:
   build:
-    uses: meteor-digital/github-actions/workflows/build-artifact.yml@main
+    uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
     with:
       config_path: ".github/ci-config.yml"
     secrets:

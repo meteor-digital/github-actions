@@ -9,7 +9,7 @@ on:
 
 jobs:
   pr-validation:
-    uses: meteor-digital/github-actions/workflows/pr-checks.yml@main
+    uses: meteor-digital/github-actions/.github/workflows/pr-checks.yml@main
     with:
       config_path: ".github/quality-config.yml"
     secrets:

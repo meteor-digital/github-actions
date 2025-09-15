@@ -38,11 +38,11 @@ runs:
   steps:
     - name: Detect project type
       id: project-type
-      uses: meteor-digital/github-actions/actions/detect-project-type@main
+      uses: meteor-digital/github-actions/.github/actions/detect-project-type@main
 
     - name: Read configuration
       id: config
-      uses: meteor-digital/github-actions/actions/parse-ci-config@main
+      uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
       with:
         config_file: ${{ inputs.config_file }}
         
@@ -122,7 +122,7 @@ runs:
 
     - name: Install dependencies
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: meteor-digital/github-actions/actions/composer-setup@main
+      uses: meteor-digital/github-actions/.github/actions/composer-setup@main
       with:
         args: '--prefer-dist --no-progress --no-interaction --optimize-autoloader'
         with_dev: ${{ inputs.composer_with_dev }}

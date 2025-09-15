@@ -35,7 +35,7 @@ jobs:
       
       - name: Read CI configuration
         id: ci_config
-        uses: meteor-digital/github-actions/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
         with:
           config_file: '.github/ci-config.yml'
 
@@ -75,7 +75,7 @@ jobs:
       
       # Run the setup job here, so the cache is generated for the parallel jobs below
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -149,7 +149,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -197,7 +197,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -237,7 +237,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -277,7 +277,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -316,7 +316,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
@@ -357,7 +357,7 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Setup environment
-        uses: meteor-digital/github-actions/actions/setup-environment@main
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: '.github/ci-config.yml'
           composer_with_dev: 'yes'
