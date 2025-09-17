@@ -18,6 +18,9 @@ on:
       notification_webhook:
         description: 'Teams/Slack webhook URL for notifications'
         required: false
+      test_env_vars:
+        description: 'Additional test environment variables'
+        required: false
 
 jobs:
   quality-checks:
@@ -29,6 +32,7 @@ jobs:
       run_slow_testsuites: true
     secrets:
       composer_auth: ${{ secrets.composer_auth }}
+      test_env_vars: ${{ secrets.test_env_vars }}
 
   build:
     name: 'Build artifact'
