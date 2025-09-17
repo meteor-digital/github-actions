@@ -20,20 +20,25 @@ on:
         required: false
 
 jobs:
-  setup:
-    name: 'Prepare artifact build'
+  quality-checks:
+    name: 'Quality checks'
+    uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
+    with:
+      config_path: '.github/quality-config.yml'
+      check_changed_files_only: false
+      run_slow_testsuites: true
+    secrets:
+      composer_auth: ${{ secrets.composer_auth }}
+
+  build:
+    name: 'Build artifact'
     runs-on: ubuntu-latest
-    outputs:
-      artifact_name: ${{ steps.determine_artifact_name.outputs.artifact_name }}
-      project_name: ${{ steps.config.outputs.project_name }}
-      retention_days: ${{ steps.config.outputs.retention_days }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Read configuration
+        
+      - name: Read CI configuration
         id: config
         uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
         with:
@@ -60,26 +65,6 @@ jobs:
             # Default build
             echo "artifact_name=${PROJECT_NAME}-build-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
-
-  quality-checks:
-    name: 'Quality checks'
-    needs: [setup]
-    uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
-    with:
-      config_path: '.github/quality-config.yml'
-      check_changed_files_only: false
-      run_slow_testsuites: true
-    secrets:
-      composer_auth: ${{ secrets.composer_auth }}
-
-  build:
-    name: 'Build artifact'
-    needs: [setup]
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
         
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
@@ -96,10 +81,10 @@ jobs:
       - name: Upload artifact with permission preservation
         uses: pyTooling/upload-artifact@v4
         with:
-          name: ${{ needs.setup.outputs.artifact_name }}
+          name: ${{ steps.determine_artifact_name.outputs.artifact_name }}
           path: .
           include-hidden-files: true
-          retention-days: ${{ needs.setup.outputs.retention_days || 7 }}
+          retention-days: ${{ steps.config.outputs.retention_days || 7 }}
           
       - name: Create build archive for release
         if: github.ref_type == 'tag'
@@ -114,17 +99,17 @@ jobs:
         with:
           files: build-${{ github.ref_name }}.tar.gz
           tag_name: ${{ github.ref_name }}
-          name: ${{ needs.setup.outputs.project_name }} Release ${{ github.ref_name }}
+          name: ${{ steps.config.outputs.project_name }} Release ${{ github.ref_name }}
           body: |
             ## 🚀 Production Release ${{ github.ref_name }}
             
             **Build Information:**
-            - Project: ${{ needs.setup.outputs.project_name }}
+            - Project: ${{ steps.config.outputs.project_name }}
             - Commit: ${{ github.sha }}
             - Build Date: ${{ github.event.head_commit.timestamp }}
             - Workflow: ${{ github.workflow }} #${{ github.run_number }}
             
-            **Artifact:** ${{ needs.setup.outputs.artifact_name }}
+            **Artifact:** ${{ steps.determine_artifact_name.outputs.artifact_name }}
           draft: false
           prerelease: false
           
@@ -137,7 +122,7 @@ jobs:
           message: |
             ✅ Build artifact created: **${{ needs.setup.outputs.artifact_name }}**
             
-            **Project:** ${{ needs.setup.outputs.project_name }}
+            **Project:** ${{ steps.config.outputs.project_name }}
             **Branch/Tag:** ${{ github.ref_name }}
             **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
@@ -148,7 +133,7 @@ jobs:
           webhook_url: ${{ secrets.notification_webhook }}
           color: "FF0000"
           message: |
-            ❌ Build for **${{ needs.setup.outputs.project_name }}** failed
+            ❌ Build for **${{ steps.config.outputs.project_name }}** failed
             
             **Branch/Tag:** ${{ github.ref_name }}
             **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
