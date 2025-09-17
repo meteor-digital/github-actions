@@ -152,9 +152,9 @@ jobs:
 
       - name: Read CI configuration for project name
         id: ci_config
-        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
 
       - name: Send Teams notification
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main

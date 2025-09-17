@@ -20,7 +20,7 @@ A production-ready GitHub Action for deploying applications to remote hosts usin
 - name: Deploy to environment
   uses: ./actions/deploy-to-host
   with:
-    config_file: '.github/deployment-config.yml'
+    config_file: '.github/pipeline-config.yml'
     environment: 'test'
     build_path: './build'
     ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -31,7 +31,7 @@ A production-ready GitHub Action for deploying applications to remote hosts usin
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `config_file` | Path to deployment configuration file | No | `.github/deployment-config.yml` |
+| `config_file` | Path to pipeline configuration file | No | `.github/pipeline-config.yml` |
 | `environment` | Target environment (test, acc, prod, etc.) | Yes | - |
 | `build_path` | Path to built project files | No | `.` |
 | `ssh_private_key` | SSH private key for deployment | Yes | - |

@@ -38,9 +38,9 @@ jobs:
       
       - name: Read CI configuration
         id: ci_config
-        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
 
       - name: Parse quality configuration
         id: quality_config
@@ -78,7 +78,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}  
   
@@ -94,7 +94,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -152,7 +152,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -211,7 +211,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -252,7 +252,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -293,7 +293,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -333,7 +333,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -374,7 +374,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/ci-config.yml'
+          config_file: '.github/pipeline-config.yml'
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -392,7 +392,7 @@ jobs:
           else
             echo "💡 No additional test environment variables provided"
           fi
-      
+          
       - name: Run integration tests
         shell: bash
         run: |

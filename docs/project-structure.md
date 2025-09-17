@@ -29,8 +29,7 @@ generic-ci-cd-workflows/
 │   └── troubleshooting.md          # Common issues and solutions
 ├── templates/                      # Project templates
 │   ├── shopware/                  # Shopware project templates
-│   │   ├── ci-config.yml
-│   │   ├── deployment-config.yml
+│   │   ├── pipeline-config.yml
 │   │   ├── quality-config.yml
 │   │   └── .github/workflows/
 │   ├── laravel/                   # Laravel project examples
@@ -168,7 +167,7 @@ jobs:
   build:
     uses: org/generic-ci-cd-workflows/workflows/build-artifact.yml@main
     with:
-      config_path: ".github/ci-config.yml"
+      config_path: ".github/pipeline-config.yml"
     secrets:
       composer_auth: ${{ secrets.COMPOSER_AUTH }}
 ```

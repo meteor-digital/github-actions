@@ -5,7 +5,7 @@ inputs:
   config_file:
     description: 'Path to deployment configuration file'
     required: false
-    default: '.github/deployment-config.yml'
+    default: '.github/pipeline-config.yml'
   environment:
     description: 'Target environment (test, acc, prod, etc.)'
     required: true
@@ -15,9 +15,6 @@ inputs:
     default: '.'
   ssh_private_key:
     description: 'SSH private key for deployment'
-    required: true
-  ssh_user:
-    description: 'SSH username for deployment'
     required: true
 
 outputs:
@@ -40,7 +37,7 @@ runs:
 
     - name: Parse deployment configuration
       id: config
-      uses: meteor-digital/github-actions/.github/actions/parse-deployment-config@main
+      uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
       with:
         config_file: ${{ inputs.config_file }}
         environment: ${{ inputs.environment }}
@@ -62,7 +59,7 @@ runs:
         remote_path: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}/
         remote_host: ${{ steps.config.outputs.host }}
         remote_port: ${{ steps.config.outputs.ssh_port }}
-        remote_user: ${{ inputs.ssh_user }}
+        remote_user: ${{ steps.config.outputs.ssh_user }}
         remote_key: ${{ inputs.ssh_private_key }}
 
     - name: Create shared folder symlinks
@@ -70,7 +67,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         deploy_path: ${{ steps.config.outputs.path }}
         release_dir: ${{ steps.setup.outputs.release_dir }}
         shared_folders: ${{ steps.config.outputs.shared_folders }}
@@ -81,7 +78,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         working_directory: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}
         commands: ${{ steps.config.outputs.pre_deploy_commands }}
         description: 'pre-deployment commands'
@@ -92,7 +89,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         working_directory: ${{ steps.config.outputs.path }}/current
         commands: ${{ steps.config.outputs.maintenance_enable_cmd }}
         description: 'maintenance mode (enable)'
@@ -103,7 +100,7 @@ runs:
         action: stop
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         project_type: ${{ steps.project_type.outputs.type }}
         provider: ${{ steps.config.outputs.provider }}
         php_service: ${{ steps.config.outputs.php_service }}
@@ -114,7 +111,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         working_directory: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}
         commands: ${{ steps.config.outputs.migration_command }}
         description: 'database migrations'
@@ -124,7 +121,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         deploy_path: ${{ steps.config.outputs.path }}
         deploy_date: ${{ steps.setup.outputs.deploy_date }}
 
@@ -133,7 +130,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         working_directory: ${{ steps.config.outputs.path }}/current
         commands: ${{ steps.config.outputs.post_deploy_commands }}
         description: 'post-deployment commands'
@@ -145,7 +142,7 @@ runs:
         action: restart
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         project_type: ${{ steps.project_type.outputs.type }}
         provider: ${{ steps.config.outputs.provider }}
         php_service: ${{ steps.config.outputs.php_service }}
@@ -157,7 +154,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         working_directory: ${{ steps.config.outputs.path }}/current
         commands: ${{ steps.config.outputs.maintenance_disable_cmd }}
         description: 'maintenance mode (disable)'
@@ -167,7 +164,7 @@ runs:
       with:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_user: ${{ inputs.ssh_user }}
+        ssh_user: ${{ steps.config.outputs.ssh_user }}
         deploy_path: ${{ steps.config.outputs.path }}
         keep_releases: ${{ steps.config.outputs.keep_releases }}
 
@@ -196,7 +193,7 @@ runs:
         
         HOST="${{ steps.config.outputs.host }}"
         SSH_PORT="${{ steps.config.outputs.ssh_port }}"
-        SSH_USER="${{ inputs.ssh_user }}"
+        SSH_USER="${{ steps.config.outputs.ssh_user }}"
         DEPLOY_PATH="${{ steps.config.outputs.path }}"
         DEPLOY_DATE="${{ steps.setup.outputs.deploy_date }}"
         PROJECT_TYPE="${{ steps.project_type.outputs.type }}"

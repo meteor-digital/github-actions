@@ -72,11 +72,10 @@ jobs:
     uses: meteor-digital/github-actions/.github/workflows/deploy.yml@main
     with:
       environment: ${{ needs.determine-environment.outputs.environment }}
-      config_path: ".github/deployment-config.yml"
+      config_path: ".github/pipeline-config.yml"
       artifact_name: ${{ needs.determine-environment.outputs.artifact_name }}
       artifact_run_id: ${{ needs.determine-environment.outputs.artifact_run_id }}
       release_version: ${{ github.event.inputs.version }}
     secrets:
       ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
       ssh_user: ${{ secrets.SSH_USER }}
-      notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}

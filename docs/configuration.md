@@ -6,8 +6,7 @@ This guide explains how to configure the generic CI/CD workflows for your projec
 
 The workflows use three main configuration files that should be placed in your project's `.github/` directory:
 
-- `.github/ci-config.yml` - Build and runtime configuration
-- `.github/deployment-config.yml` - Deployment and hosting configuration
+- `.github/pipeline-config.yml` - Unified CI/CD configuration including build, runtime, deployment, and hosting settings
 - `.github/quality-config.yml` - Code quality and notification settings
 
 ## CI Configuration

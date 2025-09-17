@@ -1,0 +1,83 @@
+# Unified CI/CD Configuration for Shopware Projects
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/pipeline-config.schema.json
+
+project:
+  name: "my-shopware-shop"  # Used for artifacts, notifications, and releases
+  # type: "shopware"  # Auto-detected from shopware-project.yml
+  
+runtime:
+  php_version: "8.1"  # PHP version for builds and quality checks
+  node_version: "18"  # Node.js version for asset compilation
+  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
+  
+build:
+  # Files and directories to exclude from build artifacts
+  exclude_patterns: |
+    *.git*
+    node_modules/*
+    tests/*
+    .env*
+    .env.local*
+    var/cache/*
+    var/log/*
+    public/bundles/*
+    public/css/*
+    public/js/*
+    public/theme/*
+    *.log
+    *.cache
+    .phpunit.result.cache
+    .php-cs-fixer.cache
+  
+  # Commands to run during build process
+  build_commands:
+    - "npm run build"
+    - "composer install --no-dev --optimize-autoloader"
+  
+artifacts:
+  retention_days: 7  # Keep artifacts for 7 days
+
+notifications:
+  notification_webhook: "https://cronos.webhook.office.com/webhookb2/KEY1/IncomingWebhook/KEY2"
+
+deployment:
+  environments:
+    test:
+      host: "test.example.com"  # Replace with actual hostname
+      path: "/var/www/test"  # Replace with actual path
+      messenger_worker_id: "1"
+      
+    acc:
+      host: "acc.example.com"  # Replace with actual hostname
+      path: "/var/www/acc"  # Replace with actual path
+      messenger_worker_id: "2"
+      
+    prod:
+      host: "prod.example.com"  # Replace with actual hostname
+      path: "/var/www/prod"  # Replace with actual path
+      messenger_worker_id: "3"
+
+  hosting:
+    provider: "{{HOSTING_PROVIDER}}"  # level27, byte, hipex, hostedpower, generic
+    php_service: "php8.1-fpm"
+
+  # Optional: Override framework defaults
+  # Shopware defaults are automatically applied:
+  # - shared_folders: ["files", "public/media", "public/sitemap", "public/thumbnail", "config/jwt", "var/log"]
+  # - pre_deploy: ["bin/console cache:warmup --no-optional-warmers"]
+  # - post_deploy: ["bin/console theme:compile --active-only", "bin/console scheduled-task:register", "bin/console dal:refresh:index"]
+  # - cleanup: keep_releases: 3
+  # - Database migrations are handled separately in the deployment workflow
+
+  # Uncomment and customize only if you need to override the defaults:
+  # shared_folders:
+  #   - "custom/plugins/uploads"  # Add custom shared folders to defaults
+  # 
+  # commands:
+  #   pre_deploy:
+  #     - "custom-pre-deploy-command"  # Add custom pre-deploy commands
+  #   post_deploy:
+  #     - "custom-post-deploy-command"  # Add custom post-deploy commands
+  # 
+  # cleanup:
+  #   keep_releases: 5  # Override default of 3

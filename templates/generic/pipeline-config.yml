@@ -1,0 +1,77 @@
+# Unified CI/CD Configuration for Generic Projects
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/pipeline-config.schema.json
+
+project:
+  name: "my-project"  # Used for artifacts, notifications, and releases
+  type: "generic"     # Explicitly set for generic projects
+  
+runtime:
+  php_version: "8.1"  # PHP version for builds and quality checks
+  node_version: "18"  # Node.js version for asset compilation
+  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache"
+  
+build:
+  # Files and directories to exclude from build artifacts
+  exclude_patterns: |
+    *.git*
+    node_modules/*
+    tests/*
+    .env*
+    .env.local*
+    *.log
+    *.cache
+    .phpunit.result.cache
+    .php-cs-fixer.cache
+    tmp/*
+    temp/*
+  
+  # Commands to run during build process
+  build_commands:
+    - "npm run build"
+    - "composer install --no-dev --optimize-autoloader"
+  
+artifacts:
+  retention_days: 7  # Keep artifacts for 7 days
+
+notifications:
+  notification_webhook: "https://cronos.webhook.office.com/webhookb2/KEY1/IncomingWebhook/KEY2"
+
+deployment:
+  environments:
+    test:
+      host: "test.example.com"  # Replace with actual hostname
+      path: "/var/www/test"  # Replace with actual path
+      maintenance_mode: false  # Generic projects may not support maintenance mode
+      
+    staging:
+      host: "staging.example.com"  # Replace with actual hostname
+      path: "/var/www/staging"  # Replace with actual path
+      maintenance_mode: false
+      
+    prod:
+      host: "prod.example.com"  # Replace with actual hostname
+      path: "/var/www/prod"  # Replace with actual path
+      maintenance_mode: false
+
+  hosting:
+    provider: "{{HOSTING_PROVIDER}}"  # Use generic provider for custom setups
+    ssh_port: 22
+    php_service: "php-fpm"
+    custom_commands:
+      restart_services: "sudo service nginx reload && sudo service php-fpm restart"
+
+  # Generic deployment configuration
+  # Shared folders for generic projects
+  shared_folders:
+    - "uploads"
+    - "logs"
+    - "cache"
+  
+  commands:
+    pre_deploy:
+      - "echo 'Starting deployment...'"
+    post_deploy:
+      - "echo 'Deployment completed'"
+  
+  cleanup:
+    keep_releases: 3  # Keep 3 releases for rollback capability

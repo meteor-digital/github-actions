@@ -27,7 +27,7 @@ jobs:
   build:
     uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
     with:
-      config_path: ".github/ci-config.yml"
+      config_path: ".github/pipeline-config.yml"
       build_type: "production"
     secrets:
       composer_auth: ${{ secrets.COMPOSER_AUTH }}

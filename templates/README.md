@@ -6,26 +6,22 @@ This directory contains example configuration files for different project types.
 
 ### Shopware Projects (`shopware/`)
 Complete configuration for Shopware 6 projects, including:
-- **ci-config.yml**: PHP 8.1, Node 18, Shopware-specific build commands
-- **deployment-config.yml**: Shopware shared folders, console commands
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Shopware-specific build commands, shared folders, and console commands
 - **quality-config.yml**: PHPUnuhi validation, Shopware-specific checks
 
 ### Laravel Projects (`laravel/`)
 Configuration optimized for Laravel applications:
-- **ci-config.yml**: PHP 8.2, Node 20, Laravel optimization commands
-- **deployment-config.yml**: Laravel shared folders, Artisan commands
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.2, Node 20, Laravel optimization commands, shared folders, and Artisan commands
 - **quality-config.yml**: Laravel Pint, Feature/Unit test suites
 
 ### Symfony Projects (`symfony/`)
 Configuration for Symfony applications:
-- **ci-config.yml**: PHP 8.1, Node 18, Symfony console commands
-- **deployment-config.yml**: Symfony shared folders, Doctrine migrations
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Symfony console commands, shared folders, and Doctrine migrations
 - **quality-config.yml**: Symfony linting, Messenger setup
 
 ### Generic Projects (`generic/`)
 Minimal configuration for projects that don't fit specific frameworks:
-- **ci-config.yml**: Basic PHP/Node setup, generic build commands
-- **deployment-config.yml**: Simple deployment with custom commands
+- **pipeline-config.yml**: Unified CI/CD config with basic PHP/Node setup, generic build commands, and simple deployment
 - **quality-config.yml**: Standard PHP quality tools
 
 ## Using Templates
@@ -113,7 +109,7 @@ jobs:
   build:
     uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
     with:
-      config_path: ".github/ci-config.yml"
+      config_path: ".github/pipeline-config.yml"
     secrets:
       composer_auth: ${{ secrets.COMPOSER_AUTH }}
       notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}
@@ -152,7 +148,7 @@ jobs:
 
 ### Adding Custom Build Commands
 ```yaml
-# ci-config.yml
+# pipeline-config.yml
 build:
   build_commands:
     - "npm run build"
@@ -162,7 +158,7 @@ build:
 
 ### Custom Shared Folders
 ```yaml
-# deployment-config.yml
+# pipeline-config.yml
 deployment:
   shared_folders:
     - "custom/uploads"      # Add to framework defaults
@@ -181,8 +177,9 @@ quality_checks:
 
 ### Multiple Environments
 ```yaml
-# deployment-config.yml
-environments:
+# pipeline-config.yml
+deployment:
+  environments:
   dev:
     auto_deploy: true
     branches: ["develop"]
@@ -214,7 +211,7 @@ All template files are validated against their respective JSON schemas. You can 
 ./scripts/validate-config.sh .github
 
 # Using ajv-cli (if installed)
-ajv validate -s schemas/ci-config.schema.json -d .github/ci-config.yml
+ajv validate -s schemas/pipeline-config.schema.json -d .github/pipeline-config.yml
 ```
 
 ## Getting Help

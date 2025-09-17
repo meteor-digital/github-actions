@@ -6,7 +6,7 @@ on:
       config_path:
         description: 'Path to CI configuration file'
         type: string
-        default: '.github/ci-config.yml'
+        default: '.github/pipeline-config.yml'
       build_type:
         description: 'Build type (development, production)'
         type: string
@@ -44,7 +44,7 @@ jobs:
         
       - name: Read CI configuration
         id: config
-        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
         with:
           config_file: ${{ inputs.config_path }}
 

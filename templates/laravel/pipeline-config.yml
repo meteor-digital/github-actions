@@ -1,0 +1,87 @@
+# Unified CI/CD Configuration for Laravel Projects
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/pipeline-config.schema.json
+
+project:
+  name: "my-laravel-app"  # Used for artifacts, notifications, and releases
+  # type: "laravel"  # Auto-detected from artisan file
+  
+runtime:
+  php_version: "8.2"  # PHP version for builds and quality checks
+  node_version: "20"  # Node.js version for asset compilation
+  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
+  
+build:
+  # Files and directories to exclude from build artifacts
+  exclude_patterns: |
+    *.git*
+    node_modules/*
+    tests/*
+    .env*
+    .env.local*
+    .env.testing*
+    storage/logs/*
+    storage/framework/cache/*
+    storage/framework/sessions/*
+    storage/framework/testing/*
+    storage/framework/views/*
+    bootstrap/cache/*
+    *.log
+    *.cache
+    .phpunit.result.cache
+    .php-cs-fixer.cache
+  
+  # Commands to run during build process
+  build_commands:
+    - "npm run build"
+    - "composer install --no-dev --optimize-autoloader"
+    - "php artisan config:cache"
+    - "php artisan route:cache"
+    - "php artisan view:cache"
+  
+artifacts:
+  retention_days: 7  # Keep artifacts for 7 days
+
+notifications:
+  notification_webhook: "https://cronos.webhook.office.com/webhookb2/KEY1/IncomingWebhook/KEY2"
+
+deployment:
+  environments:
+    test:
+      host: "test.example.com"  # Replace with actual hostname
+      path: "/var/www/test"  # Replace with actual path
+      maintenance_mode: true
+      
+    staging:
+      host: "staging.example.com"  # Replace with actual hostname
+      path: "/var/www/staging"  # Replace with actual path
+      maintenance_mode: true
+      
+    prod:
+      host: "prod.example.com"  # Replace with actual hostname
+      path: "/var/www/prod"  # Replace with actual path
+      maintenance_mode: true
+
+  hosting:
+    provider: "{{HOSTING_PROVIDER}}"  # level27, byte, hipex, hostedpower, generic
+    ssh_port: 22
+    php_service: "php8.2-fpm"
+
+  # Optional: Override framework defaults
+  # Laravel defaults include:
+  # - shared_folders: ["storage", "bootstrap/cache"]
+  # - post_deploy: ["php artisan config:cache", "php artisan route:cache", "php artisan view:cache"]
+  
+  # Add custom shared folders to framework defaults
+  shared_folders:
+    - "public/uploads"  # Custom upload directory
+  
+  commands:
+    pre_deploy:
+      - "php artisan migrate --force"  # Run database migrations
+      - "php artisan queue:restart"    # Restart queue workers
+    post_deploy:
+      - "php artisan storage:link"     # Create storage symlink
+      - "php artisan optimize"         # Optimize application
+  
+  cleanup:
+    keep_releases: 3  # Keep 3 releases for rollback capability

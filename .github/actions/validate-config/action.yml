@@ -41,15 +41,13 @@ runs:
         
         # Required configuration files
         REQUIRED_FILES=(
-            "$CONFIG_DIR/ci-config.yml"
-            "$CONFIG_DIR/deployment-config.yml"
+            "$CONFIG_DIR/pipeline-config.yml"
             "$CONFIG_DIR/quality-config.yml"
         )
         
         # Schema mappings
         declare -A SCHEMA_MAP=(
-            ["$CONFIG_DIR/ci-config.yml"]="ci-config.schema.json"
-            ["$CONFIG_DIR/deployment-config.yml"]="deployment-config.schema.json"
+            ["$CONFIG_DIR/pipeline-config.yml"]="pipeline-config.schema.json"
             ["$CONFIG_DIR/quality-config.yml"]="quality-config.schema.json"
         )
         
@@ -154,17 +152,17 @@ runs:
         echo "🔧 Validating configuration content..."
         
         # Validate CI configuration
-        if [ -f "$CONFIG_DIR/ci-config.yml" ]; then
+        if [ -f "$CONFIG_DIR/pipeline-config.yml" ]; then
             echo "  📋 Validating CI configuration..."
             
             # Check required fields
             if command -v yq >/dev/null 2>&1; then
-                project_name=$(yq eval '.project.name' "$CONFIG_DIR/ci-config.yml" 2>/dev/null)
-                php_version=$(yq eval '.runtime.php_version' "$CONFIG_DIR/ci-config.yml" 2>/dev/null)
+                project_name=$(yq eval '.project.name' "$CONFIG_DIR/pipeline-config.yml" 2>/dev/null)
+                php_version=$(yq eval '.runtime.php_version' "$CONFIG_DIR/pipeline-config.yml" 2>/dev/null)
                 
                 if [ -z "$project_name" ] || [ "$project_name" = "null" ]; then
                     echo "    ❌ Missing required field: project.name"
-                    VALIDATION_ERRORS+=("ci-config.yml: Missing required field project.name")
+                    VALIDATION_ERRORS+=("pipeline-config.yml: Missing required field project.name")
                     RESULT="error"
                 else
                     echo "    ✅ Project name: $project_name"
@@ -172,7 +170,7 @@ runs:
                 
                 if [ -z "$php_version" ] || [ "$php_version" = "null" ]; then
                     echo "    ❌ Missing required field: runtime.php_version"
-                    VALIDATION_ERRORS+=("ci-config.yml: Missing required field runtime.php_version")
+                    VALIDATION_ERRORS+=("pipeline-config.yml: Missing required field runtime.php_version")
                     RESULT="error"
                 else
                     # Validate PHP version format
@@ -180,7 +178,7 @@ runs:
                         echo "    ✅ PHP version: $php_version"
                     else
                         echo "    ❌ Invalid PHP version format: $php_version (expected: X.Y)"
-                        VALIDATION_ERRORS+=("ci-config.yml: Invalid PHP version format")
+                        VALIDATION_ERRORS+=("pipeline-config.yml: Invalid PHP version format")
                         RESULT="error"
                     fi
                 fi
@@ -188,25 +186,25 @@ runs:
         fi
         
         # Validate deployment configuration
-        if [ -f "$CONFIG_DIR/deployment-config.yml" ]; then
+        if [ -f "$CONFIG_DIR/pipeline-config.yml" ]; then
             echo "  🚀 Validating deployment configuration..."
             
             if command -v yq >/dev/null 2>&1; then
                 # Check if at least one environment is defined
-                environments=$(yq eval '.environments | keys | length' "$CONFIG_DIR/deployment-config.yml" 2>/dev/null)
+                environments=$(yq eval '.deployment.environments | keys | length' "$CONFIG_DIR/pipeline-config.yml" 2>/dev/null)
                 if [ "$environments" = "0" ] || [ "$environments" = "null" ]; then
                     echo "    ❌ No environments defined"
-                    VALIDATION_ERRORS+=("deployment-config.yml: No environments defined")
+                    VALIDATION_ERRORS+=("pipeline-config.yml: No deployment environments defined")
                     RESULT="error"
                 else
                     echo "    ✅ Found $environments environment(s)"
                 fi
                 
                 # Check hosting provider
-                provider=$(yq eval '.hosting.provider' "$CONFIG_DIR/deployment-config.yml" 2>/dev/null)
+                provider=$(yq eval '.deployment.hosting.provider' "$CONFIG_DIR/pipeline-config.yml" 2>/dev/null)
                 if [ -z "$provider" ] || [ "$provider" = "null" ]; then
                     echo "    ❌ Missing required field: hosting.provider"
-                    VALIDATION_ERRORS+=("deployment-config.yml: Missing required field hosting.provider")
+                    VALIDATION_ERRORS+=("pipeline-config.yml: Missing required field deployment.hosting.provider")
                     RESULT="error"
                 else
                     # Validate provider value
@@ -217,7 +215,7 @@ runs:
                         *)
                             echo "    ❌ Invalid hosting provider: $provider"
                             echo "       Valid options: level27, byte, hipex, hostedpower, generic"
-                            VALIDATION_ERRORS+=("deployment-config.yml: Invalid hosting provider")
+                            VALIDATION_ERRORS+=("pipeline-config.yml: Invalid hosting provider")
                             RESULT="error"
                             ;;
                     esac

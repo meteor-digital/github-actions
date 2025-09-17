@@ -5,7 +5,7 @@ inputs:
   config_file:
     description: 'Path to CI configuration file (for type override)'
     required: false
-    default: '.github/ci-config.yml'
+    default: '.github/pipeline-config.yml'
 
 outputs:
   type:

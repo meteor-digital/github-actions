@@ -5,14 +5,14 @@ inputs:
   config_file:
     description: 'Path to CI configuration file'
     required: false
-    default: '.github/ci-config.yml'
+    default: '.github/pipeline-config.yml'
 
 runs:
   using: 'composite'
   steps:
     - name: Read configuration
       id: config
-      uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
+      uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
       with:
         config_file: ${{ inputs.config_file }}
         

@@ -17,7 +17,7 @@ display_help() {
     echo "  project-type      The type of the project (e.g., shopware, laravel, symfony)."
     echo "                    This determines which template files are used."
     echo "  hosting-provider  The hosting provider (e.g., level27, byte, hipex, hostedpower)."
-    echo "                    This sets the 'provider' in the deployment-config.yml."
+    echo "                    This sets the 'provider' in the pipeline-config.yml."
     echo
     echo "Options:"
     echo "  -h, --help        Display this help message and exit."
@@ -64,8 +64,7 @@ mkdir -p .github/workflows
 TEMPLATE_DIR="$ACTIONS_REPO_DIR/templates/$PROJECT_TYPE"
 if [ -d "$TEMPLATE_DIR" ]; then
     echo "Copying $PROJECT_TYPE configuration files..."
-    cp "$TEMPLATE_DIR/ci-config.yml" ".github/"
-    cp "$TEMPLATE_DIR/deployment-config.yml" ".github/"
+    cp "$TEMPLATE_DIR/pipeline-config.yml" ".github/"
     cp "$TEMPLATE_DIR/quality-config.yml" ".github/"
     
     # Copy workflow template files
@@ -84,16 +83,15 @@ else
     exit 1
 fi
 
-# Update hosting provider in deployment config
+# Update hosting provider in pipeline config
 echo "Setting hosting provider to $HOSTING_PROVIDER..."
-sed -i "s/{{HOSTING_PROVIDER}}/$HOSTING_PROVIDER/g" .github/deployment-config.yml
+sed -i "s/{{HOSTING_PROVIDER}}/$HOSTING_PROVIDER/g" .github/pipeline-config.yml
 
 echo ""
 echo "✅ Setup completed successfully!"
 echo ""
 echo "Configuration files created in .github/ directory:"
-echo "  - ci-config.yml"
-echo "  - deployment-config.yml" 
+echo "  - pipeline-config.yml"
 echo "  - quality-config.yml"
 echo ""
 echo "Workflow files created in .github/workflows/ directory:"

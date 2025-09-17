@@ -4,18 +4,17 @@ This directory contains JSON Schema files that define the structure and validati
 
 ## Schema Files
 
-### ci-config.schema.json
-Defines the schema for `.github/ci-config.yml` files, including:
+### pipeline-config.schema.json
+Defines the schema for `.github/pipeline-config.yml` files, including:
 - Project configuration (name, type)
 - Runtime settings (PHP/Node versions, extensions)
 - Build configuration (exclude patterns, build commands)
 - Artifact settings (retention, naming patterns)
-
-### deployment-config.schema.json
-Defines the schema for `.github/deployment-config.yml` files, including:
-- Environment definitions (test, staging, prod)
-- Hosting provider configuration
-- Deployment settings (shared folders, commands, cleanup)
+- Notification configuration (webhooks)
+- Deployment configuration:
+  - Environment definitions (test, staging, prod)
+  - Hosting provider configuration
+  - Deployment settings (shared folders, commands, cleanup)
 
 ### quality-config.schema.json
 Defines the schema for `.github/quality-config.yml` files, including:
@@ -30,7 +29,7 @@ Defines the schema for `.github/quality-config.yml` files, including:
 Most modern IDEs support JSON Schema validation for YAML files. Add this to your YAML file header:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/ci-config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/pipeline-config.schema.json
 ```
 
 ### Manual Validation
@@ -41,7 +40,7 @@ You can validate configuration files using tools like `ajv-cli`:
 npm install -g ajv-cli
 
 # Validate a configuration file
-ajv validate -s ci-config.schema.json -d .github/ci-config.yml
+ajv validate -s pipeline-config.schema.json -d .github/pipeline-config.yml
 ```
 
 ### GitHub Actions Validation

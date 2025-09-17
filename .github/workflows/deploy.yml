@@ -10,7 +10,7 @@ on:
       config_path:
         description: 'Path to deployment configuration file'
         type: string
-        default: '.github/deployment-config.yml'
+        default: '.github/pipeline-config.yml'
       artifact_name:
         description: 'Name of the build artifact to deploy'
         type: string
@@ -23,16 +23,11 @@ on:
         description: 'Release version to deploy (for manual deployments)'
         type: string
         required: false
+
     secrets:
       ssh_private_key:
         description: 'SSH private key for deployment'
         required: true
-      ssh_user:
-        description: 'SSH username for deployment'
-        required: true
-      notification_webhook:
-        description: 'Teams/Slack webhook URL for notifications'
-        required: false
 
 jobs:
   setup:
@@ -41,15 +36,22 @@ jobs:
     outputs:
       project_name: ${{ steps.config.outputs.project_name }}
       deploy_date: ${{ steps.setup.outputs.deploy_date }}
+      notification_webhook: ${{ steps.config.outputs.notification_webhook }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Detect project type
+        id: detect
+        uses: meteor-digital/github-actions/.github/actions/detect-project-type@main
+
       - name: Read configuration
         id: config
-        uses: meteor-digital/github-actions/.github/actions/parse-ci-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
         with:
           config_file: ${{ inputs.config_path }}
+          environment: ${{ inputs.environment }}
+          project_type: ${{ steps.detect.outputs.type }}
 
       - name: Setup deployment variables
         id: setup
@@ -75,10 +77,10 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Send start notification
-        if: secrets.notification_webhook
+        if: ${{ needs.setup.outputs.notification_webhook }}
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
-          webhook_url: ${{ secrets.notification_webhook }}
+          webhook_url: ${{ needs.setup.outputs.notification_webhook }}
           color: "FFFF00"
           message: "🚀 Deploy **${{ needs.setup.outputs.project_name }}** to **${{ inputs.environment }}**"
         
@@ -109,13 +111,12 @@ jobs:
           environment: ${{ inputs.environment }}
           build_path: '.'
           ssh_private_key: ${{ secrets.ssh_private_key }}
-          ssh_user: ${{ secrets.ssh_user }}
           
       - name: Send success notification
-        if: success() && secrets.notification_webhook
+        if: ${{ success() && needs.setup.outputs.notification_webhook }}
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
-          webhook_url: ${{ secrets.notification_webhook }}
+          webhook_url: ${{ needs.setup.outputs.notification_webhook }}
           color: "00FF00"
           message: |
             ✅ Deploy **${{ needs.setup.outputs.project_name }}** to **${{ inputs.environment }}** SUCCESS
@@ -125,10 +126,10 @@ jobs:
             **Deployed at:** ${{ needs.setup.outputs.deploy_date }}
           
       - name: Send failure notification
-        if: failure() && secrets.notification_webhook
+        if: ${{ failure() && needs.setup.outputs.notification_webhook }}
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
-          webhook_url: ${{ secrets.notification_webhook }}
+          webhook_url: ${{ needs.setup.outputs.notification_webhook }}
           color: "FF0000"
           message: |
             ❌ Deploy **${{ needs.setup.outputs.project_name }}** to **${{ inputs.environment }}** FAILED

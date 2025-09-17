@@ -14,8 +14,7 @@ echo "🔍 Validating CI/CD configuration in $CONFIG_DIR..."
 
 # Check if configuration files exist
 REQUIRED_FILES=(
-    "$CONFIG_DIR/ci-config.yml"
-    "$CONFIG_DIR/deployment-config.yml"
+    "$CONFIG_DIR/pipeline-config.yml"
     "$CONFIG_DIR/quality-config.yml"
 )
 
