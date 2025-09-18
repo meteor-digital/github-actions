@@ -1,0 +1,70 @@
+name: 'Determine Artifact Name'
+description: 'Determines artifact name based on project configuration and Git reference'
+
+inputs:
+  config_file:
+    description: 'Path to pipeline configuration file'
+    required: false
+    default: '.github/pipeline-config.yml'
+  ref_name:
+    description: 'Git reference name (branch or tag)'
+    required: true
+  ref_type:
+    description: 'Git reference type (branch or tag)'
+    required: false
+    default: 'branch'
+
+outputs:
+  artifact_name:
+    description: 'Generated artifact name'
+    value: ${{ steps.determine.outputs.artifact_name }}
+  environment:
+    description: 'Target environment based on reference'
+    value: ${{ steps.determine.outputs.environment }}
+  version:
+    description: 'Extracted version (if applicable)'
+    value: ${{ steps.determine.outputs.version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Read project configuration
+      id: config
+      uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
+      with:
+        config_file: ${{ inputs.config_file }}
+
+    - name: Determine artifact name and environment
+      id: determine
+      shell: bash
+      run: |
+        PROJECT_NAME="${{ steps.config.outputs.project_name }}"
+        REF_NAME="${{ inputs.ref_name }}"
+        REF_TYPE="${{ inputs.ref_type }}"
+        
+        echo "🏷️ Determining artifact name for: $REF_NAME ($REF_TYPE)"
+        
+        if [[ "$REF_TYPE" == "tag" ]]; then
+          # Tag push - PROD build
+          echo "artifact_name=${PROJECT_NAME}-prod-build-${REF_NAME}" >> $GITHUB_OUTPUT
+          echo "environment=prod" >> $GITHUB_OUTPUT
+          echo "version=${REF_NAME}" >> $GITHUB_OUTPUT
+        elif [[ "$REF_NAME" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+          # Release branch - ACC build
+          VERSION="${BASH_REMATCH[1]}"
+          echo "artifact_name=${PROJECT_NAME}-acc-build-${VERSION}" >> $GITHUB_OUTPUT
+          echo "environment=acc" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        elif [[ "$REF_NAME" =~ ^test/ ]]; then
+          # Test branch - TEST build
+          echo "artifact_name=${PROJECT_NAME}-test-build" >> $GITHUB_OUTPUT
+          echo "environment=test" >> $GITHUB_OUTPUT
+          echo "version=" >> $GITHUB_OUTPUT
+        else
+          # Default build
+          echo "artifact_name=${PROJECT_NAME}-build-${REF_NAME//\//-}" >> $GITHUB_OUTPUT
+          echo "environment=" >> $GITHUB_OUTPUT
+          echo "version=" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "✅ Artifact name determined: $(cat $GITHUB_OUTPUT | grep artifact_name | cut -d'=' -f2)"
