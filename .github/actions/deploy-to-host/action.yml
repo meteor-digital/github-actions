@@ -64,10 +64,51 @@ runs:
         chmod 700 ~/.ssh
         chmod 600 ~/.ssh/known_hosts
 
+    - name: Prepare rsync exclude patterns
+      id: excludes
+      shell: bash
+      run: |
+        EXCLUDE_FILE="/tmp/rsync-excludes"
+        echo "🚫 Preparing rsync exclude patterns..."
+        
+        # Check for project-specific rsync excludes file
+        if [ -f ".github/rsync-excludes" ]; then
+          echo "📄 Using project-specific rsync excludes: .github/rsync-excludes"
+          cp ".github/rsync-excludes" "$EXCLUDE_FILE"
+        elif [ -f "sysadmin/deploy/sync-to-host-excludes" ]; then
+          echo "📄 Using legacy rsync excludes: sysadmin/deploy/sync-to-host-excludes"
+          cp "sysadmin/deploy/sync-to-host-excludes" "$EXCLUDE_FILE"
+        else
+          echo "📄 Using default rsync excludes"
+          # Create default rsync excludes for deployment
+          cat > "$EXCLUDE_FILE" <<-'EOF'
+		.git/
+		.github/
+		var/
+		public/media/
+		public/thumbnail/
+		public/sitemap/
+		scripts/
+		tests/
+		.gitignore
+		.gitattributes
+		composer*
+		package*.json
+		symfony.lock
+		rector.php
+		.php-cs-fixer.php
+		grumpphp.yml
+EOF
+        fi
+        
+        echo "exclude_file=$EXCLUDE_FILE" >> $GITHUB_OUTPUT
+        echo "📋 Rsync exclude patterns:"
+        cat "$EXCLUDE_FILE"
+
     - name: Sync files to host
       uses: burnett01/rsync-deployments@7.0.2
       with:
-        switches: -azlp --exclude-from="./sysadmin/deploy/sync-to-host-excludes"
+        switches: -azlp --exclude-from="${{ steps.excludes.outputs.exclude_file }}"
         path: ${{ inputs.build_path }}/
         remote_path: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}/
         remote_host: ${{ steps.config.outputs.host }}
