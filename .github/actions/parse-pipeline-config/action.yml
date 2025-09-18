@@ -13,128 +13,129 @@ inputs:
     description: 'Project type (shopware, laravel, symfony)'
     required: false
 
-
 outputs:
   # CI Configuration outputs
   project_name:
     description: 'Project name from configuration'
-    value: ${{ steps.parse.outputs.project_name }}
+    value: ${{ steps.parse_ci.outputs.project_name }}
   php_version:
     description: 'PHP version from configuration'
-    value: ${{ steps.parse.outputs.php_version }}
+    value: ${{ steps.parse_ci.outputs.php_version }}
   node_version:
     description: 'Node.js version from configuration'
-    value: ${{ steps.parse.outputs.node_version }}
+    value: ${{ steps.parse_ci.outputs.node_version }}
   php_extensions:
     description: 'PHP extensions from configuration'
-    value: ${{ steps.parse.outputs.php_extensions }}
+    value: ${{ steps.parse_ci.outputs.php_extensions }}
   build_commands:
     description: 'Build commands from configuration'
-    value: ${{ steps.parse.outputs.build_commands }}
+    value: ${{ steps.parse_ci.outputs.build_commands }}
   exclude_patterns:
     description: 'File exclusion patterns from configuration'
-    value: ${{ steps.parse.outputs.exclude_patterns }}
+    value: ${{ steps.parse_ci.outputs.exclude_patterns }}
   retention_days:
     description: 'Artifact retention days from configuration'
-    value: ${{ steps.parse.outputs.retention_days }}
+    value: ${{ steps.parse_ci.outputs.retention_days }}
   notification_webhook:
     description: 'Notification webhook URL for notifications'
-    value: ${{ steps.parse.outputs.notification_webhook }}
+    value: ${{ steps.parse_ci.outputs.notification_webhook }}
   
   # Deployment Configuration outputs
   host:
     description: 'Deployment host'
-    value: ${{ steps.parse.outputs.host }}
+    value: ${{ steps.parse_deployment.outputs.host }}
   path:
     description: 'Deployment path'
-    value: ${{ steps.parse.outputs.path }}
+    value: ${{ steps.parse_deployment.outputs.path }}
   provider:
     description: 'Hosting provider'
-    value: ${{ steps.parse.outputs.provider }}
+    value: ${{ steps.parse_deployment.outputs.provider }}
   ssh_user:
     description: 'SSH username for deployment'
-    value: ${{ steps.parse.outputs.ssh_user }}
+    value: ${{ steps.parse_deployment.outputs.ssh_user }}
   ssh_port:
     description: 'SSH port'
-    value: ${{ steps.parse.outputs.ssh_port }}
+    value: ${{ steps.parse_deployment.outputs.ssh_port }}
   php_service:
     description: 'PHP service name'
-    value: ${{ steps.parse.outputs.php_service }}
+    value: ${{ steps.parse_deployment.outputs.php_service }}
   maintenance_mode:
     description: 'Enable maintenance mode'
-    value: ${{ steps.parse.outputs.maintenance_mode }}
+    value: ${{ steps.parse_deployment.outputs.maintenance_mode }}
   keep_releases:
     description: 'Number of releases to keep'
-    value: ${{ steps.parse.outputs.keep_releases }}
+    value: ${{ steps.parse_deployment.outputs.keep_releases }}
   messenger_worker_id:
     description: 'Messenger worker ID'
-    value: ${{ steps.parse.outputs.messenger_worker_id }}
+    value: ${{ steps.parse_deployment.outputs.messenger_worker_id }}
   shared_folders:
     description: 'Shared folders list'
-    value: ${{ steps.parse.outputs.shared_folders }}
+    value: ${{ steps.apply_overrides.outputs.shared_folders }}
   pre_deploy_commands:
     description: 'Pre-deployment commands'
-    value: ${{ steps.parse.outputs.pre_deploy_commands }}
+    value: ${{ steps.apply_overrides.outputs.pre_deploy_commands }}
   post_deploy_commands:
     description: 'Post-deployment commands'
-    value: ${{ steps.parse.outputs.post_deploy_commands }}
+    value: ${{ steps.apply_overrides.outputs.post_deploy_commands }}
   migration_command:
     description: 'Database migration command'
-    value: ${{ steps.parse.outputs.migration_command }}
+    value: ${{ steps.framework_defaults.outputs.migration_command }}
   maintenance_enable_cmd:
     description: 'Maintenance enable command'
-    value: ${{ steps.parse.outputs.maintenance_enable_cmd }}
+    value: ${{ steps.framework_defaults.outputs.maintenance_enable_cmd }}
   maintenance_disable_cmd:
     description: 'Maintenance disable command'
-    value: ${{ steps.parse.outputs.maintenance_disable_cmd }}
+    value: ${{ steps.framework_defaults.outputs.maintenance_disable_cmd }}
 
 runs:
   using: 'composite'
   steps:
-    - name: '🔍 Validate inputs'
+    - name: '🔍 Validate inputs and config file'
       shell: bash
       run: |
-        # Validate required inputs
         CONFIG_FILE="${{ inputs.config_file }}"
+        ENVIRONMENT="${{ inputs.environment }}"
+        
+        # Validate required inputs
         if [ -z "$CONFIG_FILE" ]; then
           echo "❌ Error: config_file input is required"
           exit 1
         fi
         
         # Validate environment format if provided
-        ENVIRONMENT="${{ inputs.environment }}"
         if [ -n "$ENVIRONMENT" ] && ! [[ "$ENVIRONMENT" =~ ^[a-zA-Z0-9-]+$ ]]; then
           echo "❌ Error: Invalid environment name '$ENVIRONMENT'"
           echo "💡 Environment names must contain only letters, numbers, and hyphens"
           exit 1
         fi
         
-        echo "✅ Input validation completed"
+        # Validate configuration file exists and has valid YAML syntax
+        if [ ! -f "$CONFIG_FILE" ]; then
+          echo "❌ Error: Configuration file not found: $CONFIG_FILE"
+          echo "💡 Please create the file or check the path"
+          exit 1
+        fi
+        
+        if ! yq eval '.' "$CONFIG_FILE" >/dev/null 2>&1; then
+          echo "❌ Error: Invalid YAML syntax in $CONFIG_FILE"
+          echo "💡 Please check for indentation errors, missing quotes, or invalid characters"
+          exit 1
+        fi
+        
+        echo "✅ Input validation and config file validation completed"
 
-    - name: '🔧 Parse pipeline configuration'
-      id: parse
+    - name: '📦 Parse CI configuration'
+      id: parse_ci
       shell: bash
       run: |
-        #!/bin/bash
-        # Description: Parse unified pipeline configuration from YAML file
-        # Usage: Called from GitHub Actions workflow
-        set -euo pipefail
-        
         CONFIG_FILE="${{ inputs.config_file }}"
-        ENVIRONMENT="${{ inputs.environment }}"
-        PROJECT_TYPE="${{ inputs.project_type }}"
         
-        echo "🔧 Parsing unified pipeline configuration"
-        echo "  📄 Config File: $CONFIG_FILE"
-        echo "  🎯 Environment: ${ENVIRONMENT:-'(not specified)'}"
-        echo "  🏗️  Project Type: ${PROJECT_TYPE:-'(not specified)'}"
+        echo "📦 Parsing CI configuration..."
         
-        # Initialize all variables
+        # Initialize with defaults
         PROJECT_NAME="${{ github.event.repository.name }}"
-        PHP_VERSION=""
         NODE_VERSION="18"
         PHP_EXTENSIONS="mbstring, intl, gd, xml, zip, curl, opcache"
-        BUILD_COMMANDS=""
         RETENTION_DAYS="7"
         EXCLUDE_PATTERNS="*.git*
         node_modules/*
@@ -142,267 +143,54 @@ runs:
         .env*
         *.log
         *.cache"
-        NOTIFICATION_WEBHOOK=""
         
-        # Deployment variables
-        HOST=""
-        DEPLOY_PATH=""
-        PROVIDER=""
-        SSH_PORT="22"
-        SSH_USER=""
-        PHP_SERVICE=""
-        MAINTENANCE_MODE="true"
-        MESSENGER_WORKER_ID=""
-        KEEP_RELEASES="3"
-        SHARED_FOLDERS=""
-        PRE_DEPLOY_COMMANDS=""
-        POST_DEPLOY_COMMANDS=""
-        MIGRATION_COMMAND=""
-        MAINTENANCE_ENABLE_CMD=""
-        MAINTENANCE_DISABLE_CMD=""
+        # Parse values from config
+        PARSED_PROJECT_NAME=$(yq eval '.project.name' "$CONFIG_FILE" 2>/dev/null)
+        PARSED_PHP_VERSION=$(yq eval '.runtime.php_version' "$CONFIG_FILE" 2>/dev/null)
+        PARSED_NODE_VERSION=$(yq eval '.runtime.node_version' "$CONFIG_FILE" 2>/dev/null)
+        PARSED_PHP_EXTENSIONS=$(yq eval '.runtime.php_extensions' "$CONFIG_FILE" 2>/dev/null)
+        PARSED_RETENTION_DAYS=$(yq eval '.artifacts.retention_days' "$CONFIG_FILE" 2>/dev/null)
+        NOTIFICATION_WEBHOOK=$(yq eval '.notifications.notification_webhook' "$CONFIG_FILE" 2>/dev/null)
         
-        # Validate configuration file exists and has valid YAML syntax
-        validate_config_file() {
-          local config_file="$1"
-          
-          if [ ! -f "$config_file" ]; then
-            echo "❌ Error: Configuration file not found: $config_file"
-            echo "💡 Please create the file or check the path"
-            return 1
-          fi
-          
-          if ! yq eval '.' "$config_file" >/dev/null 2>&1; then
-            echo "❌ Error: Invalid YAML syntax in $config_file"
-            echo "💡 Please check for indentation errors, missing quotes, or invalid characters"
-            return 1
-          fi
-          
-          echo "✅ Configuration file validated successfully"
-          return 0
-        }
+        # Apply parsed values with validation
+        [ -n "$PARSED_PROJECT_NAME" ] && [ "$PARSED_PROJECT_NAME" != "null" ] && PROJECT_NAME="$PARSED_PROJECT_NAME"
         
-        validate_config_file "$CONFIG_FILE"
-          
-        # Parse CI configuration section
-        echo "📦 Parsing CI configuration..."
-          PARSED_PROJECT_NAME=$(yq eval '.project.name' "$CONFIG_FILE" 2>/dev/null)
-          PARSED_PHP_VERSION=$(yq eval '.runtime.php_version' "$CONFIG_FILE" 2>/dev/null)
-          PARSED_NODE_VERSION=$(yq eval '.runtime.node_version' "$CONFIG_FILE" 2>/dev/null)
-          PARSED_PHP_EXTENSIONS=$(yq eval '.runtime.php_extensions' "$CONFIG_FILE" 2>/dev/null)
-          PARSED_RETENTION_DAYS=$(yq eval '.artifacts.retention_days' "$CONFIG_FILE" 2>/dev/null)
-          NOTIFICATION_WEBHOOK=$(yq eval '.notifications.notification_webhook' "$CONFIG_FILE" 2>/dev/null)
-          
-          # Use parsed values if available
-          if [ -n "$PARSED_PROJECT_NAME" ] && [ "$PARSED_PROJECT_NAME" != "null" ]; then
-            PROJECT_NAME="$PARSED_PROJECT_NAME"
-          fi
-          
-          if [ -n "$PARSED_PHP_VERSION" ] && [ "$PARSED_PHP_VERSION" != "null" ]; then
+        if [ -n "$PARSED_PHP_VERSION" ] && [ "$PARSED_PHP_VERSION" != "null" ]; then
+          if [[ "$PARSED_PHP_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
             PHP_VERSION="$PARSED_PHP_VERSION"
-            if ! [[ "$PHP_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
-              echo "❌ Error: Invalid PHP version format '$PHP_VERSION' (expected: X.Y)"
-              exit 1
-            fi
           else
-            echo "❌ Error: PHP version is required in runtime.php_version"
+            echo "❌ Error: Invalid PHP version format '$PARSED_PHP_VERSION' (expected: X.Y)"
             exit 1
           fi
-          
-          if [ -n "$PARSED_NODE_VERSION" ] && [ "$PARSED_NODE_VERSION" != "null" ]; then
+        else
+          echo "❌ Error: PHP version is required in runtime.php_version"
+          exit 1
+        fi
+        
+        if [ -n "$PARSED_NODE_VERSION" ] && [ "$PARSED_NODE_VERSION" != "null" ]; then
+          if [[ "$PARSED_NODE_VERSION" =~ ^[0-9]+$ ]]; then
             NODE_VERSION="$PARSED_NODE_VERSION"
-            if ! [[ "$NODE_VERSION" =~ ^[0-9]+$ ]]; then
-              echo "❌ Error: Invalid Node.js version format '$NODE_VERSION' (expected: integer)"
-              exit 1
-            fi
-          fi
-          
-          if [ -n "$PARSED_PHP_EXTENSIONS" ] && [ "$PARSED_PHP_EXTENSIONS" != "null" ]; then
-            PHP_EXTENSIONS="$PARSED_PHP_EXTENSIONS"
-          fi
-          
-          if [ -n "$PARSED_RETENTION_DAYS" ] && [ "$PARSED_RETENTION_DAYS" != "null" ]; then
-            RETENTION_DAYS="$PARSED_RETENTION_DAYS"
-            if ! [[ "$RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
-              echo "❌ Error: Invalid retention_days format '$RETENTION_DAYS' (expected: integer)"
-              exit 1
-            fi
-          fi
-          
-          # Parse build commands using yq
-          BUILD_COMMANDS_YAML=$(yq eval -r '.build.build_commands[]' "$CONFIG_FILE" 2>/dev/null)
-          if [ -n "$BUILD_COMMANDS_YAML" ] && [ "$BUILD_COMMANDS_YAML" != "null" ]; then
-            BUILD_COMMANDS="$BUILD_COMMANDS_YAML"
-          fi
-          
-          # Parse exclude patterns using yq
-          EXCLUDE_PATTERNS_YAML=$(yq eval '.build.exclude_patterns' "$CONFIG_FILE" 2>/dev/null)
-          if [ -n "$EXCLUDE_PATTERNS_YAML" ] && [ "$EXCLUDE_PATTERNS_YAML" != "null" ]; then
-            EXCLUDE_PATTERNS="$EXCLUDE_PATTERNS_YAML"
-          fi
-          
-          # Parse deployment configuration (if environment and project_type are provided)
-          if [ -n "$ENVIRONMENT" ] && [ -n "$PROJECT_TYPE" ]; then
-            echo "🚀 Parsing deployment configuration..."
-            
-            # Set framework-specific defaults
-            case "$PROJECT_TYPE" in
-              'shopware')
-                echo "✅ Loading Shopware framework defaults"
-                DEFAULT_SHARED_FOLDERS="files
-                public/media
-                public/sitemap
-                public/thumbnail
-                config/jwt
-                var/log"
-                DEFAULT_PRE_DEPLOY="bin/console cache:warmup --no-optional-warmers"
-                DEFAULT_POST_DEPLOY="bin/console theme:dump
-                bin/console theme:compile --active-only
-                bin/console scheduled-task:register
-                bin/console dal:refresh:index"
-                MIGRATION_COMMAND="bin/console database:migrate --all"
-                MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
-                MAINTENANCE_DISABLE_CMD="bin/console sales-channel:maintenance:disable --all"
-                ;;
-              'laravel')
-                echo "✅ Loading Laravel framework defaults"
-                DEFAULT_SHARED_FOLDERS="storage
-                bootstrap/cache"
-                DEFAULT_PRE_DEPLOY=""
-                DEFAULT_POST_DEPLOY="php artisan config:cache
-                php artisan route:cache
-                php artisan view:cache
-                php artisan optimize"
-                MIGRATION_COMMAND="php artisan migrate --force"
-                MAINTENANCE_ENABLE_CMD="php artisan down"
-                MAINTENANCE_DISABLE_CMD="php artisan up"
-                ;;
-              'symfony')
-                echo "✅ Loading Symfony framework defaults"
-                DEFAULT_SHARED_FOLDERS="var
-                public/uploads"
-                DEFAULT_PRE_DEPLOY="bin/console cache:warmup --no-optional-warmers"
-                DEFAULT_POST_DEPLOY="bin/console doctrine:migrations:migrate --no-interaction"
-                MIGRATION_COMMAND="bin/console doctrine:migrations:migrate --no-interaction"
-                MAINTENANCE_ENABLE_CMD="touch maintenance.html"
-                MAINTENANCE_DISABLE_CMD="rm -f maintenance.html"
-                ;;
-              *)
-                echo "❌ Error: No defaults found for project type '$PROJECT_TYPE'"
-                echo "Supported project types: shopware, laravel, symfony"
-                exit 1
-                ;;
-            esac
-            
-            # Set defaults from framework
-            SHARED_FOLDERS="$DEFAULT_SHARED_FOLDERS"
-            PRE_DEPLOY_COMMANDS="$DEFAULT_PRE_DEPLOY"
-            POST_DEPLOY_COMMANDS="$DEFAULT_POST_DEPLOY"
-            
-            # Parse deployment configuration using yq
-            HOST=$(yq eval ".deployment.environments.${ENVIRONMENT}.host" "$CONFIG_FILE" 2>/dev/null)
-            DEPLOY_PATH=$(yq eval ".deployment.environments.${ENVIRONMENT}.path" "$CONFIG_FILE" 2>/dev/null)
-            MAINTENANCE_MODE=$(yq eval ".deployment.environments.${ENVIRONMENT}.maintenance_mode" "$CONFIG_FILE" 2>/dev/null)
-            
-            # Parse hosting configuration
-            PROVIDER=$(yq eval ".deployment.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
-            PHP_SERVICE=$(yq eval ".deployment.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
-            
-            # Parse SSH port (environment-specific with default fallback)
-            SSH_PORT=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_port" "$CONFIG_FILE" 2>/dev/null)
-            if [ -z "$SSH_PORT" ] || [ "$SSH_PORT" = "null" ]; then
-              SSH_PORT="22"
-            fi
-            
-            # Parse SSH user from environment-specific configuration
-            SSH_USER=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_user" "$CONFIG_FILE" 2>/dev/null)
-            
-            # Parse messenger worker ID
-            ENV_MESSENGER_WORKER_ID=$(yq eval ".deployment.environments.${ENVIRONMENT}.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
-            if [ -n "$ENV_MESSENGER_WORKER_ID" ] && [ "$ENV_MESSENGER_WORKER_ID" != "null" ]; then
-              MESSENGER_WORKER_ID="$ENV_MESSENGER_WORKER_ID"
-            else
-              MESSENGER_WORKER_ID=$(yq eval ".deployment.hosting.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
-            fi
-            
-            # Parse deployment overrides
-            PROJECT_KEEP_RELEASES=$(yq eval ".deployment.cleanup.keep_releases" "$CONFIG_FILE" 2>/dev/null)
-            if [ -n "$PROJECT_KEEP_RELEASES" ] && [ "$PROJECT_KEEP_RELEASES" != "null" ]; then
-              KEEP_RELEASES="$PROJECT_KEEP_RELEASES"
-            fi
-            
-            # Parse project-specific overrides using yq
-            PROJECT_SHARED_FOLDERS=$(yq eval '.deployment.shared_folders[]' "$CONFIG_FILE" 2>/dev/null)
-            if [ -n "$PROJECT_SHARED_FOLDERS" ] && [ "$PROJECT_SHARED_FOLDERS" != "null" ]; then
-              echo "  Overriding shared folders with project configuration"
-              SHARED_FOLDERS="$PROJECT_SHARED_FOLDERS"
-            fi
-            
-            PROJECT_PRE_DEPLOY=$(yq eval '.deployment.commands.pre_deploy[]' "$CONFIG_FILE" 2>/dev/null)
-            if [ -n "$PROJECT_PRE_DEPLOY" ] && [ "$PROJECT_PRE_DEPLOY" != "null" ]; then
-              echo "  Overriding pre-deploy commands with project configuration"
-              PRE_DEPLOY_COMMANDS="$PROJECT_PRE_DEPLOY"
-            fi
-            
-            PROJECT_POST_DEPLOY=$(yq eval '.deployment.commands.post_deploy[]' "$CONFIG_FILE" 2>/dev/null)
-            if [ -n "$PROJECT_POST_DEPLOY" ] && [ "$PROJECT_POST_DEPLOY" != "null" ]; then
-              echo "  Overriding post-deploy commands with project configuration"
-              POST_DEPLOY_COMMANDS="$PROJECT_POST_DEPLOY"
-            fi
-            
-            # Validate required deployment configuration
-            if [ -z "$HOST" ] || [ "$HOST" = "null" ]; then
-              echo "❌ Error: Host not configured for environment '$ENVIRONMENT'"
-              exit 1
-            fi
-            
-            if [ -z "$DEPLOY_PATH" ] || [ "$DEPLOY_PATH" = "null" ]; then
-              echo "❌ Error: Path not configured for environment '$ENVIRONMENT'"
-              exit 1
-            fi
-            
-            if [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ]; then
-              echo "❌ Error: Hosting provider not configured"
-              exit 1
-            fi
-            
-            if [ -z "$SSH_USER" ] || [ "$SSH_USER" = "null" ]; then
-              echo "❌ Error: SSH user not configured"
-              exit 1
-            fi
-            
-            # Set defaults for optional values
-            [ -z "$SSH_PORT" ] || [ "$SSH_PORT" = "null" ] && SSH_PORT="22"
-            [ -z "$MAINTENANCE_MODE" ] || [ "$MAINTENANCE_MODE" = "null" ] && MAINTENANCE_MODE="true"
           else
-            echo "ℹ️  Skipping deployment configuration (environment or project_type not provided)"
+            echo "❌ Error: Invalid Node.js version format '$PARSED_NODE_VERSION' (expected: integer)"
+            exit 1
           fi
         fi
         
-        echo "📊 Configuration summary:"
-        echo "  Project name: $PROJECT_NAME"
-        echo "  PHP version: $PHP_VERSION"
-        echo "  Node version: $NODE_VERSION"
-        echo "  PHP extensions: $PHP_EXTENSIONS"
-        echo "  Retention days: $RETENTION_DAYS"
-        echo "  Notification webhook: $NOTIFICATION_WEBHOOK"
-        echo "  Build commands: $(echo "$BUILD_COMMANDS" | wc -l) commands"
-        echo "  Exclude patterns: $(echo "$EXCLUDE_PATTERNS" | wc -l) patterns"
+        [ -n "$PARSED_PHP_EXTENSIONS" ] && [ "$PARSED_PHP_EXTENSIONS" != "null" ] && PHP_EXTENSIONS="$PARSED_PHP_EXTENSIONS"
         
-        if [ -n "$ENVIRONMENT" ] && [ -n "$PROJECT_TYPE" ]; then
-          echo "  Environment: $ENVIRONMENT"
-          echo "  Host: $HOST"
-          echo "  Path: $DEPLOY_PATH"
-          echo "  Provider: $PROVIDER"
-          echo "  SSH Port: $SSH_PORT"
-          echo "  SSH User: $SSH_USER"
-          echo "  PHP Service: $PHP_SERVICE"
-          echo "  Maintenance Mode: $MAINTENANCE_MODE"
-          echo "  Keep Releases: $KEEP_RELEASES"
-          echo "  Messenger Worker ID: $MESSENGER_WORKER_ID"
-          echo "  Shared Folders: $(echo "$SHARED_FOLDERS" | wc -l) folders"
-          echo "  Pre-deploy Commands: $(echo "$PRE_DEPLOY_COMMANDS" | wc -l) commands"
-          echo "  Post-deploy Commands: $(echo "$POST_DEPLOY_COMMANDS" | wc -l) commands"
+        if [ -n "$PARSED_RETENTION_DAYS" ] && [ "$PARSED_RETENTION_DAYS" != "null" ]; then
+          if [[ "$PARSED_RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
+            RETENTION_DAYS="$PARSED_RETENTION_DAYS"
+          else
+            echo "❌ Error: Invalid retention_days format '$PARSED_RETENTION_DAYS' (expected: integer)"
+            exit 1
+          fi
         fi
+        
+        # Parse build commands and exclude patterns
+        BUILD_COMMANDS=$(yq eval -r '.build.build_commands[]' "$CONFIG_FILE" 2>/dev/null || echo "")
+        EXCLUDE_PATTERNS_YAML=$(yq eval '.build.exclude_patterns' "$CONFIG_FILE" 2>/dev/null)
+        [ -n "$EXCLUDE_PATTERNS_YAML" ] && [ "$EXCLUDE_PATTERNS_YAML" != "null" ] && EXCLUDE_PATTERNS="$EXCLUDE_PATTERNS_YAML"
         
         # Set outputs
         echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
@@ -417,17 +205,65 @@ runs:
         echo "exclude_patterns<<EOF" >> $GITHUB_OUTPUT
         echo "$EXCLUDE_PATTERNS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: '🏗️ Load framework defaults'
+      id: framework_defaults
+      if: inputs.project_type != ''
+      shell: bash
+      run: |
+        PROJECT_TYPE="${{ inputs.project_type }}"
         
-        # Deployment outputs
-        echo "host=$HOST" >> $GITHUB_OUTPUT
-        echo "path=$DEPLOY_PATH" >> $GITHUB_OUTPUT
-        echo "provider=$PROVIDER" >> $GITHUB_OUTPUT
-        echo "ssh_port=$SSH_PORT" >> $GITHUB_OUTPUT
-        echo "ssh_user=$SSH_USER" >> $GITHUB_OUTPUT
-        echo "php_service=$PHP_SERVICE" >> $GITHUB_OUTPUT
-        echo "maintenance_mode=$MAINTENANCE_MODE" >> $GITHUB_OUTPUT
-        echo "keep_releases=$KEEP_RELEASES" >> $GITHUB_OUTPUT
-        echo "messenger_worker_id=$MESSENGER_WORKER_ID" >> $GITHUB_OUTPUT
+        echo "🏗️ Loading framework defaults for: $PROJECT_TYPE"
+        
+        case "$PROJECT_TYPE" in
+          'shopware')
+            echo "✅ Loading Shopware framework defaults"
+            SHARED_FOLDERS="files
+        public/media
+        public/sitemap
+        public/thumbnail
+        config/jwt
+        var/log"
+            PRE_DEPLOY_COMMANDS="bin/console cache:warmup --no-optional-warmers"
+            POST_DEPLOY_COMMANDS="bin/console theme:dump
+        bin/console theme:compile --active-only
+        bin/console scheduled-task:register
+        bin/console dal:refresh:index"
+            MIGRATION_COMMAND="bin/console database:migrate --all"
+            MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
+            MAINTENANCE_DISABLE_CMD="bin/console sales-channel:maintenance:disable --all"
+            ;;
+          'laravel')
+            echo "✅ Loading Laravel framework defaults"
+            SHARED_FOLDERS="storage
+        bootstrap/cache"
+            PRE_DEPLOY_COMMANDS=""
+            POST_DEPLOY_COMMANDS="php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+        php artisan optimize"
+            MIGRATION_COMMAND="php artisan migrate --force"
+            MAINTENANCE_ENABLE_CMD="php artisan down"
+            MAINTENANCE_DISABLE_CMD="php artisan up"
+            ;;
+          'symfony')
+            echo "✅ Loading Symfony framework defaults"
+            SHARED_FOLDERS="var
+        public/uploads"
+            PRE_DEPLOY_COMMANDS="bin/console cache:warmup --no-optional-warmers"
+            POST_DEPLOY_COMMANDS="bin/console doctrine:migrations:migrate --no-interaction"
+            MIGRATION_COMMAND="bin/console doctrine:migrations:migrate --no-interaction"
+            MAINTENANCE_ENABLE_CMD="touch maintenance.html"
+            MAINTENANCE_DISABLE_CMD="rm -f maintenance.html"
+            ;;
+          *)
+            echo "❌ Error: No defaults found for project type '$PROJECT_TYPE'"
+            echo "Supported project types: shopware, laravel, symfony"
+            exit 1
+            ;;
+        esac
+        
+        # Set framework defaults as outputs
         echo "shared_folders<<EOF" >> $GITHUB_OUTPUT
         echo "$SHARED_FOLDERS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -440,3 +276,143 @@ runs:
         echo "migration_command=$MIGRATION_COMMAND" >> $GITHUB_OUTPUT
         echo "maintenance_enable_cmd=$MAINTENANCE_ENABLE_CMD" >> $GITHUB_OUTPUT
         echo "maintenance_disable_cmd=$MAINTENANCE_DISABLE_CMD" >> $GITHUB_OUTPUT
+
+    - name: '🚀 Parse deployment configuration'
+      id: parse_deployment
+      if: inputs.environment != '' && inputs.project_type != ''
+      shell: bash
+      run: |
+        CONFIG_FILE="${{ inputs.config_file }}"
+        ENVIRONMENT="${{ inputs.environment }}"
+        
+        echo "🚀 Parsing deployment configuration for environment: $ENVIRONMENT"
+        
+        # Parse deployment configuration using yq
+        HOST=$(yq eval ".deployment.environments.${ENVIRONMENT}.host" "$CONFIG_FILE" 2>/dev/null)
+        DEPLOY_PATH=$(yq eval ".deployment.environments.${ENVIRONMENT}.path" "$CONFIG_FILE" 2>/dev/null)
+        MAINTENANCE_MODE=$(yq eval ".deployment.environments.${ENVIRONMENT}.maintenance_mode" "$CONFIG_FILE" 2>/dev/null)
+        SSH_PORT=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_port" "$CONFIG_FILE" 2>/dev/null)
+        SSH_USER=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_user" "$CONFIG_FILE" 2>/dev/null)
+        
+        # Parse hosting configuration
+        PROVIDER=$(yq eval ".deployment.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
+        PHP_SERVICE=$(yq eval ".deployment.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
+        
+        # Parse messenger worker ID (environment-specific with fallback)
+        MESSENGER_WORKER_ID=$(yq eval ".deployment.environments.${ENVIRONMENT}.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
+        if [ -z "$MESSENGER_WORKER_ID" ] || [ "$MESSENGER_WORKER_ID" = "null" ]; then
+          MESSENGER_WORKER_ID=$(yq eval ".deployment.hosting.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
+        fi
+        
+        # Parse cleanup configuration
+        KEEP_RELEASES=$(yq eval ".deployment.cleanup.keep_releases" "$CONFIG_FILE" 2>/dev/null)
+        
+        # Set defaults for optional values
+        [ -z "$SSH_PORT" ] || [ "$SSH_PORT" = "null" ] && SSH_PORT="22"
+        [ -z "$MAINTENANCE_MODE" ] || [ "$MAINTENANCE_MODE" = "null" ] && MAINTENANCE_MODE="true"
+        [ -z "$KEEP_RELEASES" ] || [ "$KEEP_RELEASES" = "null" ] && KEEP_RELEASES="3"
+        
+        # Validate required deployment configuration
+        if [ -z "$HOST" ] || [ "$HOST" = "null" ]; then
+          echo "❌ Error: Host not configured for environment '$ENVIRONMENT'"
+          exit 1
+        fi
+        
+        if [ -z "$DEPLOY_PATH" ] || [ "$DEPLOY_PATH" = "null" ]; then
+          echo "❌ Error: Path not configured for environment '$ENVIRONMENT'"
+          exit 1
+        fi
+        
+        if [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ]; then
+          echo "❌ Error: Hosting provider not configured"
+          exit 1
+        fi
+        
+        if [ -z "$SSH_USER" ] || [ "$SSH_USER" = "null" ]; then
+          echo "❌ Error: SSH user not configured"
+          exit 1
+        fi
+        
+        # Set deployment outputs
+        echo "host=$HOST" >> $GITHUB_OUTPUT
+        echo "path=$DEPLOY_PATH" >> $GITHUB_OUTPUT
+        echo "provider=$PROVIDER" >> $GITHUB_OUTPUT
+        echo "ssh_port=$SSH_PORT" >> $GITHUB_OUTPUT
+        echo "ssh_user=$SSH_USER" >> $GITHUB_OUTPUT
+        echo "php_service=$PHP_SERVICE" >> $GITHUB_OUTPUT
+        echo "maintenance_mode=$MAINTENANCE_MODE" >> $GITHUB_OUTPUT
+        echo "keep_releases=$KEEP_RELEASES" >> $GITHUB_OUTPUT
+        echo "messenger_worker_id=$MESSENGER_WORKER_ID" >> $GITHUB_OUTPUT
+
+    - name: '🔧 Apply project overrides'
+      id: apply_overrides
+      if: inputs.environment != '' && inputs.project_type != ''
+      shell: bash
+      run: |
+        CONFIG_FILE="${{ inputs.config_file }}"
+        
+        echo "🔧 Applying project-specific overrides..."
+        
+        # Start with framework defaults
+        SHARED_FOLDERS="${{ steps.framework_defaults.outputs.shared_folders }}"
+        PRE_DEPLOY_COMMANDS="${{ steps.framework_defaults.outputs.pre_deploy_commands }}"
+        POST_DEPLOY_COMMANDS="${{ steps.framework_defaults.outputs.post_deploy_commands }}"
+        
+        # Parse project-specific overrides
+        PROJECT_SHARED_FOLDERS=$(yq eval '.deployment.shared_folders[]' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$PROJECT_SHARED_FOLDERS" ] && [ "$PROJECT_SHARED_FOLDERS" != "null" ]; then
+          echo "  Overriding shared folders with project configuration"
+          SHARED_FOLDERS="$PROJECT_SHARED_FOLDERS"
+        fi
+        
+        PROJECT_PRE_DEPLOY=$(yq eval '.deployment.commands.pre_deploy[]' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$PROJECT_PRE_DEPLOY" ] && [ "$PROJECT_PRE_DEPLOY" != "null" ]; then
+          echo "  Overriding pre-deploy commands with project configuration"
+          PRE_DEPLOY_COMMANDS="$PROJECT_PRE_DEPLOY"
+        fi
+        
+        PROJECT_POST_DEPLOY=$(yq eval '.deployment.commands.post_deploy[]' "$CONFIG_FILE" 2>/dev/null)
+        if [ -n "$PROJECT_POST_DEPLOY" ] && [ "$PROJECT_POST_DEPLOY" != "null" ]; then
+          echo "  Overriding post-deploy commands with project configuration"
+          POST_DEPLOY_COMMANDS="$PROJECT_POST_DEPLOY"
+        fi
+        
+        # Set final outputs
+        echo "shared_folders<<EOF" >> $GITHUB_OUTPUT
+        echo "$SHARED_FOLDERS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "pre_deploy_commands<<EOF" >> $GITHUB_OUTPUT
+        echo "$PRE_DEPLOY_COMMANDS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "post_deploy_commands<<EOF" >> $GITHUB_OUTPUT
+        echo "$POST_DEPLOY_COMMANDS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: '📊 Configuration summary'
+      shell: bash
+      run: |
+        echo "📊 Configuration summary:"
+        echo "  Project name: ${{ steps.parse_ci.outputs.project_name }}"
+        echo "  PHP version: ${{ steps.parse_ci.outputs.php_version }}"
+        echo "  Node version: ${{ steps.parse_ci.outputs.node_version }}"
+        echo "  PHP extensions: ${{ steps.parse_ci.outputs.php_extensions }}"
+        echo "  Retention days: ${{ steps.parse_ci.outputs.retention_days }}"
+        echo "  Notification webhook: ${{ steps.parse_ci.outputs.notification_webhook }}"
+        echo "  Build commands: $(echo '${{ steps.parse_ci.outputs.build_commands }}' | wc -l) commands"
+        echo "  Exclude patterns: $(echo '${{ steps.parse_ci.outputs.exclude_patterns }}' | wc -l) patterns"
+        
+        if [ -n "${{ inputs.environment }}" ] && [ -n "${{ inputs.project_type }}" ]; then
+          echo "  Environment: ${{ inputs.environment }}"
+          echo "  Host: ${{ steps.parse_deployment.outputs.host }}"
+          echo "  Path: ${{ steps.parse_deployment.outputs.path }}"
+          echo "  Provider: ${{ steps.parse_deployment.outputs.provider }}"
+          echo "  SSH Port: ${{ steps.parse_deployment.outputs.ssh_port }}"
+          echo "  SSH User: ${{ steps.parse_deployment.outputs.ssh_user }}"
+          echo "  PHP Service: ${{ steps.parse_deployment.outputs.php_service }}"
+          echo "  Maintenance Mode: ${{ steps.parse_deployment.outputs.maintenance_mode }}"
+          echo "  Keep Releases: ${{ steps.parse_deployment.outputs.keep_releases }}"
+          echo "  Messenger Worker ID: ${{ steps.parse_deployment.outputs.messenger_worker_id }}"
+          echo "  Shared Folders: $(echo '${{ steps.apply_overrides.outputs.shared_folders }}' | wc -l) folders"
+          echo "  Pre-deploy Commands: $(echo '${{ steps.apply_overrides.outputs.pre_deploy_commands }}' | wc -l) commands"
+          echo "  Post-deploy Commands: $(echo '${{ steps.apply_overrides.outputs.post_deploy_commands }}' | wc -l) commands"
+        fi
