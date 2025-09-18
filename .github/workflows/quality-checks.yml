@@ -230,19 +230,24 @@ jobs:
             echo "config_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run PHP-CS-Fixer on changed files
+      - name: '🎨 Run PHP-CS-Fixer'
         if: contains(fromJson(needs.setup.outputs.enabled_tools), 'php-cs-fixer') && steps.check-php-cs-fixer-config.outputs.config_exists == 'true' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
         shell: bash
         run: |
           echo "🎨 Running PHP-CS-Fixer..."
-          echo "  Using binary: ${{ needs.setup.outputs.php_cs_fixer_bin }}"
+          echo "  📄 Using binary: ${{ needs.setup.outputs.php_cs_fixer_bin }}"
+          
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
-            echo "  Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
+            echo "  🎯 Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
             php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation ${{ steps.changed-files.outputs.all_changed_files }}
           else
-            echo "  Checking all files"
+            echo "  📁 Checking all files"
             php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation
-          fi        
+          fi
+          
+          echo "✅ PHP-CS-Fixer completed successfully"
+
+        
   
   # Psalm static analysis (slow task)
   psalm:

@@ -91,18 +91,43 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Parse pipeline configuration
+    - name: '🔍 Validate inputs'
+      shell: bash
+      run: |
+        # Validate required inputs
+        CONFIG_FILE="${{ inputs.config_file }}"
+        if [ -z "$CONFIG_FILE" ]; then
+          echo "❌ Error: config_file input is required"
+          exit 1
+        fi
+        
+        # Validate environment format if provided
+        ENVIRONMENT="${{ inputs.environment }}"
+        if [ -n "$ENVIRONMENT" ] && ! [[ "$ENVIRONMENT" =~ ^[a-zA-Z0-9-]+$ ]]; then
+          echo "❌ Error: Invalid environment name '$ENVIRONMENT'"
+          echo "💡 Environment names must contain only letters, numbers, and hyphens"
+          exit 1
+        fi
+        
+        echo "✅ Input validation completed"
+
+    - name: '🔧 Parse pipeline configuration'
       id: parse
       shell: bash
       run: |
+        #!/bin/bash
+        # Description: Parse unified pipeline configuration from YAML file
+        # Usage: Called from GitHub Actions workflow
+        set -euo pipefail
+        
         CONFIG_FILE="${{ inputs.config_file }}"
         ENVIRONMENT="${{ inputs.environment }}"
         PROJECT_TYPE="${{ inputs.project_type }}"
         
         echo "🔧 Parsing unified pipeline configuration"
-        echo "  Config File: $CONFIG_FILE"
-        echo "  Environment: $ENVIRONMENT"
-        echo "  Project Type: $PROJECT_TYPE"
+        echo "  📄 Config File: $CONFIG_FILE"
+        echo "  🎯 Environment: ${ENVIRONMENT:-'(not specified)'}"
+        echo "  🏗️  Project Type: ${PROJECT_TYPE:-'(not specified)'}"
         
         # Initialize all variables
         PROJECT_NAME="${{ github.event.repository.name }}"
@@ -136,20 +161,30 @@ runs:
         MAINTENANCE_ENABLE_CMD=""
         MAINTENANCE_DISABLE_CMD=""
         
-        if [ ! -f "$CONFIG_FILE" ]; then
-          echo "❌ Configuration file not found: $CONFIG_FILE"
-          exit 1
-        else
-          echo "✅ Configuration file found, parsing..."
+        # Validate configuration file exists and has valid YAML syntax
+        validate_config_file() {
+          local config_file="$1"
           
-          # Validate YAML syntax first
-          if ! yq eval '.' "$CONFIG_FILE" > /dev/null 2>&1; then
-            echo "❌ Error: Invalid YAML syntax in $CONFIG_FILE"
-            exit 1
+          if [ ! -f "$config_file" ]; then
+            echo "❌ Error: Configuration file not found: $config_file"
+            echo "💡 Please create the file or check the path"
+            return 1
           fi
           
-          # Parse CI configuration
-          echo "📦 Parsing CI configuration..."
+          if ! yq eval '.' "$config_file" >/dev/null 2>&1; then
+            echo "❌ Error: Invalid YAML syntax in $config_file"
+            echo "💡 Please check for indentation errors, missing quotes, or invalid characters"
+            return 1
+          fi
+          
+          echo "✅ Configuration file validated successfully"
+          return 0
+        }
+        
+        validate_config_file "$CONFIG_FILE"
+          
+        # Parse CI configuration section
+        echo "📦 Parsing CI configuration..."
           PARSED_PROJECT_NAME=$(yq eval '.project.name' "$CONFIG_FILE" 2>/dev/null)
           PARSED_PHP_VERSION=$(yq eval '.runtime.php_version' "$CONFIG_FILE" 2>/dev/null)
           PARSED_NODE_VERSION=$(yq eval '.runtime.node_version' "$CONFIG_FILE" 2>/dev/null)

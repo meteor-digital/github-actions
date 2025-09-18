@@ -46,66 +46,102 @@ runs:
       with:
         config_file: ${{ inputs.config_file }}
         
-    - name: Validate runtime configuration
+    - name: '🔍 Validate runtime configuration'
       shell: bash
       run: |
+        #!/bin/bash
+        # Description: Validate runtime configuration values
+        set -euo pipefail
+        
         CONFIG_FILE="${{ inputs.config_file }}"
         PROJECT_TYPE="${{ steps.project-type.outputs.type }}"
         PHP_VERSION="${{ steps.config.outputs.php_version }}"
         NODE_VERSION="${{ steps.config.outputs.node_version }}"
         PHP_EXTENSIONS="${{ steps.config.outputs.php_extensions }}"
         
-        echo "📋 Configuration validation for: $CONFIG_FILE"
-        echo "🎯 Project type: $PROJECT_TYPE"
+        echo "📋 Validating runtime configuration"
+        echo "  📄 Config File: $CONFIG_FILE"
+        echo "  🎯 Project Type: $PROJECT_TYPE"
         
-        # Validate required configuration values
+        # Validate PHP version
         if [ -z "$PHP_VERSION" ] || [ "$PHP_VERSION" = "null" ]; then
-          echo "❌ PHP version not specified in configuration"
+          echo "❌ Error: PHP version not specified in configuration"
           echo "💡 Please add: runtime.php_version: \"8.1\" to your $CONFIG_FILE"
           exit 1
         fi
         
+        if ! [[ "$PHP_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+          echo "❌ Error: Invalid PHP version format '$PHP_VERSION'"
+          echo "💡 Expected format: X.Y (e.g., 8.1, 8.2)"
+          exit 1
+        fi
+        
+        # Validate Node version
         if [ -z "$NODE_VERSION" ] || [ "$NODE_VERSION" = "null" ]; then
-          echo "❌ Node version not specified in configuration"
+          echo "❌ Error: Node version not specified in configuration"
           echo "💡 Please add: runtime.node_version: \"18\" to your $CONFIG_FILE"
           exit 1
         fi
         
+        if ! [[ "$NODE_VERSION" =~ ^[0-9]+$ ]]; then
+          echo "❌ Error: Invalid Node.js version format '$NODE_VERSION'"
+          echo "💡 Expected format: integer (e.g., 18, 20)"
+          exit 1
+        fi
+        
+        # Validate PHP extensions
         if [ -z "$PHP_EXTENSIONS" ] || [ "$PHP_EXTENSIONS" = "null" ]; then
-          echo "❌ PHP extensions not specified in configuration"
+          echo "❌ Error: PHP extensions not specified in configuration"
           echo "💡 Please add: runtime.php_extensions: \"mbstring, intl, gd, xml, zip, curl, opcache\" to your $CONFIG_FILE"
           exit 1
         fi
         
-        echo "🐘 PHP Version: $PHP_VERSION"
-        echo "🟢 Node Version: $NODE_VERSION"
-        echo "🔧 PHP Extensions: $PHP_EXTENSIONS"
+        echo "✅ Runtime configuration validated successfully"
+        echo "  🐘 PHP Version: $PHP_VERSION"
+        echo "  🟢 Node Version: $NODE_VERSION"
+        echo "  🔧 PHP Extensions: $PHP_EXTENSIONS"
 
-    - name: Generate cache key
+    - name: '🔑 Generate dependency cache key'
       id: cache-key-gen
       shell: bash
       run: |
+        #!/bin/bash
+        # Description: Generate cache key for dependencies based on lock files
+        set -euo pipefail
+        
+        # Determine dev dependency suffix
         DEV_SUFFIX=""
         if [[ "${{ inputs.composer_with_dev }}" == "no" ]]; then
           DEV_SUFFIX="-nodev"
+          echo "📦 Cache mode: Production (no dev dependencies)"
+        else
+          echo "📦 Cache mode: Development (with dev dependencies)"
         fi
+        
+        # Generate hash from dependency files
         COMPOSER_HASH="${{ hashFiles('composer.json', 'composer.lock') }}"
         NODE_HASH="${{ hashFiles('package.json', 'package-lock.json') }}"
-        echo "key=deps-${COMPOSER_HASH}-${NODE_HASH}${DEV_SUFFIX}" >> $GITHUB_OUTPUT
-        echo "📋 Generated cache key: deps-${COMPOSER_HASH}-${NODE_HASH}${DEV_SUFFIX}"
+        
+        # Create cache key
+        CACHE_KEY="deps-${COMPOSER_HASH}-${NODE_HASH}${DEV_SUFFIX}"
+        echo "key=$CACHE_KEY" >> $GITHUB_OUTPUT
+        
+        echo "🔑 Generated cache key: $CACHE_KEY"
+        echo "  📄 Composer files hash: $COMPOSER_HASH"
+        echo "  📄 Node files hash: $NODE_HASH"
 
-    - name: Restore cached dependencies
+    - name: '📦 Restore cached dependencies'
       uses: actions/cache/restore@v4
       id: cache-deps
       with:
         path: |
-          vendor
-          node_modules
-          ~/.composer/cache
-          ~/.npm
+          vendor/
+          node_modules/
+          ~/.composer/cache/
+          ~/.npm/
         key: ${{ steps.cache-key-gen.outputs.key }}
 
-    - name: Setup PHP
+    - name: '🐘 Setup PHP ${{ steps.config.outputs.php_version }}'
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ steps.config.outputs.php_version }}
@@ -113,14 +149,14 @@ runs:
         tools: composer:v2
         coverage: none
 
-    - name: Setup Node.js
+    - name: '🟢 Setup Node.js ${{ steps.config.outputs.node_version }}'
       if: inputs.node_skip_setup != 'true'
       uses: actions/setup-node@v4
       with:
         node-version: ${{ steps.config.outputs.node_version }}
         cache: 'npm'
 
-    - name: Install dependencies
+    - name: '📥 Install dependencies'
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: meteor-digital/github-actions/.github/actions/composer-setup@main
       with:
@@ -129,20 +165,24 @@ runs:
       env:
         COMPOSER_AUTH: ${{ inputs.composer_auth }}
 
-    - name: Save dependency caches early
+    - name: '💾 Save dependency cache'
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: |
-          vendor
-          node_modules
-          ~/.composer/cache
-          ~/.npm
+          vendor/
+          node_modules/
+          ~/.composer/cache/
+          ~/.npm/
         key: ${{ steps.cache-key-gen.outputs.key }}
 
-    - name: Framework-specific setup
+    - name: '🎯 Framework-specific setup'
       shell: bash
       run: |
+        #!/bin/bash
+        # Description: Perform framework-specific environment setup
+        set -euo pipefail
+        
         PROJECT_TYPE="${{ steps.project-type.outputs.type }}"
         echo "🎯 Running framework-specific setup for: $PROJECT_TYPE"
         

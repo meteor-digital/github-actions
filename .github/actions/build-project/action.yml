@@ -10,109 +10,178 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Read configuration
+    - name: '🔍 Detect project type'
+      id: project-type
+      uses: meteor-digital/github-actions/.github/actions/detect-project-type@main
+
+    - name: '📋 Read build configuration'
       id: config
       uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
       with:
         config_file: ${{ inputs.config_file }}
         
-    - name: Detect project type
-      id: project-type
-      uses: meteor-digital/github-actions/.github/actions/detect-project-type@main
-        
-    - name: Install Shopware CLI
+    - name: '🛍️ Install Shopware CLI'
       if: steps.project-type.outputs.type == 'shopware'
       uses: shopware/shopware-cli-action@v2
         
-    - name: Build Shopware project
+    - name: '🛍️ Build Shopware project'
       if: steps.project-type.outputs.type == 'shopware'
       uses: shopwareLabs/build-project-action@v1
       env:
         SHOPWARE_CLI_EXPERIMENTAL_ASSET_CACHING: 1
         
-    - name: Build Laravel project
+    - name: '🅰️ Build Laravel project'
       if: steps.project-type.outputs.type == 'laravel'
       shell: bash
       run: |
-        echo "Building Laravel project..."
+        #!/bin/bash
+        # Description: Build Laravel project with frontend assets and optimization
+        set -euo pipefail
+        
+        echo "🅰️ Building Laravel project..."
         
         # Build frontend assets if package.json exists
         if [ -f "package.json" ]; then
-          echo "Building frontend assets..."
-          npm run build
+          echo "📦 Building frontend assets..."
+          if ! npm run build; then
+            echo "❌ Error: Frontend asset build failed"
+            exit 1
+          fi
+          echo "✅ Frontend assets built successfully"
+        else
+          echo "💡 No package.json found, skipping frontend build"
         fi
         
         # Optimize Laravel application
-        echo "Optimizing Laravel application..."
-        php artisan optimize
+        echo "⚡ Optimizing Laravel application..."
+        if ! php artisan optimize; then
+          echo "❌ Error: Laravel optimization failed"
+          exit 1
+        fi
         
-        echo "Laravel build completed"
+        echo "✅ Laravel build completed successfully"
         
-    - name: Build Symfony project
+    - name: '🎼 Build Symfony project'
       if: steps.project-type.outputs.type == 'symfony'
       shell: bash
       run: |
-        echo "Building Symfony project..."
+        #!/bin/bash
+        # Description: Build Symfony project with frontend assets and cache warmup
+        set -euo pipefail
+        
+        echo "🎼 Building Symfony project..."
         
         # Build frontend assets if package.json exists
         if [ -f "package.json" ]; then
-          echo "Building frontend assets..."
-          npm run build
+          echo "📦 Building frontend assets..."
+          if ! npm run build; then
+            echo "❌ Error: Frontend asset build failed"
+            exit 1
+          fi
+          echo "✅ Frontend assets built successfully"
+        else
+          echo "💡 No package.json found, skipping frontend build"
         fi
         
         # Warm up Symfony cache for production
-        echo "Warming up Symfony cache..."
-        bin/console cache:warmup --env=prod
+        echo "🔥 Warming up Symfony cache..."
+        if ! bin/console cache:warmup --env=prod; then
+          echo "❌ Error: Symfony cache warmup failed"
+          exit 1
+        fi
         
-        echo "Symfony build completed"
+        echo "✅ Symfony build completed successfully"
         
-    - name: Run custom build commands
+    - name: '🔧 Run custom build commands'
       if: steps.config.outputs.build_commands != ''
       shell: bash
       run: |
-        echo "Running custom build commands from configuration..."
+        #!/bin/bash
+        # Description: Execute custom build commands from configuration
+        set -euo pipefail
         
-        # Execute each build command
+        echo "🔧 Running custom build commands from configuration..."
+        
+        # Execute each build command with error handling
+        command_count=0
         while IFS= read -r command; do
           if [ -n "$command" ]; then
-            echo "Executing: $command"
-            eval "$command"
+            command_count=$((command_count + 1))
+            echo "🚀 Executing command $command_count: $command"
+            
+            if ! eval "$command"; then
+              echo "❌ Error: Custom build command failed: $command"
+              exit 1
+            fi
+            
+            echo "✅ Command $command_count completed successfully"
           fi
         done <<< "${{ steps.config.outputs.build_commands }}"
         
-        echo "Custom build commands completed"
+        if [ $command_count -eq 0 ]; then
+          echo "💡 No custom build commands found"
+        else
+          echo "✅ All $command_count custom build commands completed successfully"
+        fi
         
-    - name: Remove excluded files
+    - name: '🗑️ Remove excluded files'
       shell: bash
       run: |
-        echo "Removing excluded files and directories..."
+        #!/bin/bash
+        # Description: Remove files and directories based on exclusion patterns
+        set -euo pipefail
         
-        # Process exclude patterns
+        echo "🗑️ Removing excluded files and directories..."
+        
+        # Process exclude patterns with improved safety
+        pattern_count=0
         while IFS= read -r pattern; do
-          if [ -n "$pattern" ]; then
-            echo "Removing pattern: $pattern"
-            # Use find with -delete for safer removal
+          if [ -n "$pattern" ] && [ "$pattern" != "null" ]; then
+            pattern_count=$((pattern_count + 1))
+            echo "🔍 Processing exclusion pattern $pattern_count: $pattern"
+            
+            # Sanitize pattern to prevent dangerous operations
+            if [[ "$pattern" =~ ^[./]*$ ]] || [[ "$pattern" == "/" ]]; then
+              echo "⚠️  Skipping dangerous pattern: $pattern"
+              continue
+            fi
+            
+            # Use find with safer removal patterns
             if [[ "$pattern" == *"/*" ]]; then
-              # Directory pattern
-              find . -path "./$pattern" -type d -exec rm -rf {} + 2>/dev/null || true
+              # Directory pattern - remove directories matching pattern
+              find . -path "./$pattern" -type d -print0 2>/dev/null | while IFS= read -r -d '' dir; do
+                echo "  🗂️ Removing directory: $dir"
+                rm -rf "$dir" 2>/dev/null || echo "  ⚠️  Could not remove: $dir"
+              done
             else
-              # File pattern
-              find . -name "$pattern" -type f -delete 2>/dev/null || true
+              # File pattern - remove files matching pattern
+              find . -name "$pattern" -type f -print0 2>/dev/null | while IFS= read -r -d '' file; do
+                echo "  📄 Removing file: $file"
+                rm -f "$file" 2>/dev/null || echo "  ⚠️  Could not remove: $file"
+              done
             fi
           fi
         done <<< "${{ steps.config.outputs.exclude_patterns }}"
         
-        echo "File exclusion completed"
+        if [ $pattern_count -eq 0 ]; then
+          echo "💡 No exclusion patterns found"
+        else
+          echo "✅ Processed $pattern_count exclusion patterns"
+        fi
         
-    - name: Create build metadata
+    - name: '📊 Create build metadata'
       shell: bash
       run: |
-        echo "Creating build metadata..."
+        #!/bin/bash
+        # Description: Create comprehensive build metadata file
+        set -euo pipefail
+        
+        echo "📊 Creating build metadata..."
         
         # Get current timestamp in ISO format
         BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         
-        # Get branch name or tag
+        # Determine reference type and name
         if [[ "${{ github.ref }}" == refs/tags/* ]]; then
           REF_NAME="${{ github.ref_name }}"
           REF_TYPE="tag"
@@ -139,5 +208,15 @@ runs:
         }
         EOF
         
-        echo "Build metadata created:"
-        cat build-info.json
+        # Validate JSON syntax
+        if ! python3 -m json.tool build-info.json >/dev/null 2>&1; then
+          echo "❌ Error: Generated build metadata has invalid JSON syntax"
+          exit 1
+        fi
+        
+        echo "✅ Build metadata created successfully:"
+        echo "  📄 File: build-info.json"
+        echo "  🏗️  Project: ${{ steps.config.outputs.project_name }} (${{ steps.project-type.outputs.type }})"
+        echo "  📝 Commit: ${{ github.sha }}"
+        echo "  🏷️  Reference: $REF_NAME ($REF_TYPE)"
+        echo "  ⏰ Timestamp: $BUILD_TIMESTAMP"
