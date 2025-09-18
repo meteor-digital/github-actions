@@ -19,9 +19,6 @@ on:
       composer_auth:
         description: 'Composer authentication JSON'
         required: true
-      notification_webhook:
-        description: 'Teams/Slack webhook URL for notifications'
-        required: false
 
 # Prevent multiple verify-release-next workflows from running simultaneously
 concurrency:
@@ -144,7 +141,7 @@ jobs:
     name: '📢 Send failure notification'
     needs: [check-commit-changes, quality-checks]
     runs-on: ubuntu-latest
-    if: always() && needs.check-commit-changes.outputs.should_validate == 'true' && needs.quality-checks.result == 'failure' && secrets.notification_webhook != ''
+    if: always() && needs.check-commit-changes.outputs.should_validate == 'true' && needs.quality-checks.result == 'failure'
     
     steps:
       - name: Checkout code
@@ -157,9 +154,10 @@ jobs:
           config_file: '.github/pipeline-config.yml'
 
       - name: Send Teams notification
+        if: steps.ci_config.outputs.notification_webhook
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
-          webhook_url: ${{ secrets.notification_webhook }}
+          webhook_url: ${{ steps.ci_config.outputs.notification_webhook }}
           color: "FF0000"
           timezone: ${{ inputs.schedule_timezone }}
           message: |

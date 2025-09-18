@@ -27,4 +27,3 @@ jobs:
       schedule_timezone: "Europe/Brussels"
     secrets:
       composer_auth: ${{ secrets.COMPOSER_AUTH }}
-      notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}

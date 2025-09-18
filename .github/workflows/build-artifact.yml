@@ -15,9 +15,6 @@ on:
       composer_auth:
         description: 'Composer authentication JSON'
         required: true
-      notification_webhook:
-        description: 'Teams/Slack webhook URL for notifications'
-        required: false
       test_env_vars:
         description: 'Additional test environment variables'
         required: false
@@ -118,10 +115,10 @@ jobs:
           prerelease: false
           
       - name: Send success notification
-        if: success()
+        if: success() && steps.config.outputs.notification_webhook
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
-          webhook_url: ${{ secrets.notification_webhook }}
+          webhook_url: ${{ steps.config.outputs.notification_webhook }}
           color: "00FF00"
           message: |
             ✅ Build artifact created: **${{ needs.setup.outputs.artifact_name }}**
@@ -131,10 +128,10 @@ jobs:
             **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
       - name: Send failure notification
-        if: failure()
+        if: failure() && steps.config.outputs.notification_webhook
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
-          webhook_url: ${{ secrets.notification_webhook }}
+          webhook_url: ${{ steps.config.outputs.notification_webhook }}
           color: "FF0000"
           message: |
             ❌ Build for **${{ steps.config.outputs.project_name }}** failed

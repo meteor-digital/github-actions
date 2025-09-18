@@ -31,4 +31,3 @@ jobs:
       build_type: "production"
     secrets:
       composer_auth: ${{ secrets.COMPOSER_AUTH }}
-      notification_webhook: ${{ secrets.TEAMS_WEBHOOK }}
