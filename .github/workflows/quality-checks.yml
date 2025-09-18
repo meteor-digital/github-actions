@@ -31,6 +31,12 @@ jobs:
     outputs:
       enabled_tools: ${{ steps.quality_config.outputs.enabled_tools }}
       project_name: ${{ steps.ci_config.outputs.project_name }}
+      php_cs_fixer_bin: ${{ steps.quality_config.outputs.php_cs_fixer_bin }}
+      psalm_bin: ${{ steps.quality_config.outputs.psalm_bin }}
+      phpstan_bin: ${{ steps.quality_config.outputs.phpstan_bin }}
+      rector_bin: ${{ steps.quality_config.outputs.rector_bin }}
+      phpunit_bin: ${{ steps.quality_config.outputs.phpunit_bin }}
+      phpunuhi_bin: ${{ steps.quality_config.outputs.phpunuhi_bin }}
     
     steps:
       - name: Checkout code
@@ -51,28 +57,67 @@ jobs:
           # Default enabled tools
           DEFAULT_TOOLS='["php-cs-fixer", "psalm", "phpstan", "rector", "phpunit", "composer-validate"]'
           
+          # Default binary paths
+          DEFAULT_PHP_CS_FIXER="./vendor/bin/php-cs-fixer"
+          DEFAULT_PSALM="./vendor/bin/psalm"
+          DEFAULT_PHPSTAN="./vendor/bin/phpstan"
+          DEFAULT_RECTOR="./vendor/bin/rector"
+          DEFAULT_PHPUNIT="./vendor/bin/phpunit"
+          DEFAULT_PHPUNUHI="./vendor/bin/phpunuhi"
+          
           if [ -f "$CONFIG_FILE" ]; then
             echo "✅ Quality configuration file found: $CONFIG_FILE"
             
             # Parse enabled tools from configuration
-            if command -v yq >/dev/null 2>&1; then
-              # Extract and convert YAML array directly to JSON
-              ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools | @json' "$CONFIG_FILE" 2>/dev/null)
-              if [ "$ENABLED_TOOLS" = "null" ] || [ -z "$ENABLED_TOOLS" ]; then
-                ENABLED_TOOLS="$DEFAULT_TOOLS"
-              fi
-            else
-              # Fallback parsing without yq
+            # Extract and convert YAML array directly to JSON
+            ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools | @json' "$CONFIG_FILE" 2>/dev/null)
+            if [ "$ENABLED_TOOLS" = "null" ] || [ -z "$ENABLED_TOOLS" ]; then
               ENABLED_TOOLS="$DEFAULT_TOOLS"
             fi
+            
+            # Parse tool binary overrides
+            PHP_CS_FIXER_BIN=$(yq eval '.quality_checks.tool_binaries.php-cs-fixer // ""' "$CONFIG_FILE" 2>/dev/null)
+            PSALM_BIN=$(yq eval '.quality_checks.tool_binaries.psalm // ""' "$CONFIG_FILE" 2>/dev/null)
+            PHPSTAN_BIN=$(yq eval '.quality_checks.tool_binaries.phpstan // ""' "$CONFIG_FILE" 2>/dev/null)
+            RECTOR_BIN=$(yq eval '.quality_checks.tool_binaries.rector // ""' "$CONFIG_FILE" 2>/dev/null)
+            PHPUNIT_BIN=$(yq eval '.quality_checks.tool_binaries.phpunit // ""' "$CONFIG_FILE" 2>/dev/null)
+            PHPUNUHI_BIN=$(yq eval '.quality_checks.tool_binaries.phpunuhi // ""' "$CONFIG_FILE" 2>/dev/null)
+            
+            # Use defaults if not specified
+            [ -z "$PHP_CS_FIXER_BIN" ] && PHP_CS_FIXER_BIN="$DEFAULT_PHP_CS_FIXER"
+            [ -z "$PSALM_BIN" ] && PSALM_BIN="$DEFAULT_PSALM"
+            [ -z "$PHPSTAN_BIN" ] && PHPSTAN_BIN="$DEFAULT_PHPSTAN"
+            [ -z "$RECTOR_BIN" ] && RECTOR_BIN="$DEFAULT_RECTOR"
+            [ -z "$PHPUNIT_BIN" ] && PHPUNIT_BIN="$DEFAULT_PHPUNIT"
+            [ -z "$PHPUNUHI_BIN" ] && PHPUNUHI_BIN="$DEFAULT_PHPUNUHI"
           else
             echo "⚠️  Quality configuration file not found: $CONFIG_FILE"
-            echo "💡 Using default enabled tools"
+            echo "💡 Using default enabled tools and binary paths"
             ENABLED_TOOLS="$DEFAULT_TOOLS"
+            PHP_CS_FIXER_BIN="$DEFAULT_PHP_CS_FIXER"
+            PSALM_BIN="$DEFAULT_PSALM"
+            PHPSTAN_BIN="$DEFAULT_PHPSTAN"
+            RECTOR_BIN="$DEFAULT_RECTOR"
+            PHPUNIT_BIN="$DEFAULT_PHPUNIT"
+            PHPUNUHI_BIN="$DEFAULT_PHPUNUHI"
           fi
           
           echo "enabled_tools=$ENABLED_TOOLS" >> $GITHUB_OUTPUT
+          echo "php_cs_fixer_bin=$PHP_CS_FIXER_BIN" >> $GITHUB_OUTPUT
+          echo "psalm_bin=$PSALM_BIN" >> $GITHUB_OUTPUT
+          echo "phpstan_bin=$PHPSTAN_BIN" >> $GITHUB_OUTPUT
+          echo "rector_bin=$RECTOR_BIN" >> $GITHUB_OUTPUT
+          echo "phpunit_bin=$PHPUNIT_BIN" >> $GITHUB_OUTPUT
+          echo "phpunuhi_bin=$PHPUNUHI_BIN" >> $GITHUB_OUTPUT
+          
           echo "📊 Enabled quality tools: $ENABLED_TOOLS"
+          echo "🔧 Tool binary paths:"
+          echo "  php-cs-fixer: $PHP_CS_FIXER_BIN"
+          echo "  psalm: $PSALM_BIN"
+          echo "  phpstan: $PHPSTAN_BIN"
+          echo "  rector: $RECTOR_BIN"
+          echo "  phpunit: $PHPUNIT_BIN"
+          echo "  phpunuhi: $PHPUNUHI_BIN"
       
       # Run the setup job here, so the cache is generated for the parallel jobs below
       - name: Setup environment
@@ -110,7 +155,7 @@ jobs:
         shell: bash
         run: |
           echo "🌐 Running translation validation..."
-          php ./vendor/bin/phpunuhi validate:all
+          php ${{ needs.setup.outputs.phpunuhi_bin }} validate:all
 
       - name: Run custom quality checks
         if: hashFiles(inputs.config_path) != ''
@@ -190,12 +235,13 @@ jobs:
         shell: bash
         run: |
           echo "🎨 Running PHP-CS-Fixer..."
+          echo "  Using binary: ${{ needs.setup.outputs.php_cs_fixer_bin }}"
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  Checking all files"
-            php ./vendor/bin/php-cs-fixer fix --dry-run --diff --stop-on-violation
+            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation
           fi        
   
   # Psalm static analysis (slow task)
@@ -231,12 +277,13 @@ jobs:
         shell: bash
         run: |
           echo "🔍 Running Psalm static analysis..."
+          echo "  Using binary: ${{ needs.setup.outputs.psalm_bin }}"
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ./vendor/bin/psalm --no-progress --no-cache --config=./psalm.xml ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.psalm_bin }} --no-progress --no-cache --config=./psalm.xml ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  Analyzing all files"
-            php ./vendor/bin/psalm --no-progress --no-cache --config=./psalm.xml
+            php ${{ needs.setup.outputs.psalm_bin }} --no-progress --no-cache --config=./psalm.xml
           fi
 
   # PHPStan static analysis (new standard)
@@ -272,12 +319,13 @@ jobs:
         shell: bash
         run: |
           echo "🔍 Running PHPStan static analysis..."
+          echo "  Using binary: ${{ needs.setup.outputs.phpstan_bin }}"
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ./vendor/bin/phpstan analyse --configuration=phpstan.neon ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration=phpstan.neon ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  Analyzing all files"
-            php ./vendor/bin/phpstan analyse --configuration=phpstan.neon
+            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration=phpstan.neon
           fi
           
   # Rector code fixing (slow task)
@@ -313,12 +361,13 @@ jobs:
         shell: bash
         run: |
           echo "🛠️ Running Rector code analysis..."
+          echo "  Using binary: ${{ needs.setup.outputs.rector_bin }}"
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ./vendor/bin/rector process --dry-run --no-progress-bar ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.rector_bin }} process --dry-run --no-progress-bar ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  Analyzing all files"
-            php ./vendor/bin/rector process --dry-run --no-progress-bar
+            php ${{ needs.setup.outputs.rector_bin }} process --dry-run --no-progress-bar
           fi 
  
   unit-tests:
@@ -341,7 +390,8 @@ jobs:
         shell: bash
         run: |
           echo "🧪 Running PHP unit tests..."
-          php ./vendor/bin/phpunit --testsuite unit
+          echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite unit
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled  
   
@@ -399,7 +449,8 @@ jobs:
         shell: bash
         run: |
           echo "🧪 Running integration tests..."
-          php ./vendor/bin/phpunit --testsuite integration
+          echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite integration
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled
       
@@ -407,6 +458,7 @@ jobs:
         shell: bash
         run: |
           echo "🧪 Running component tests..."
-          php ./vendor/bin/phpunit --testsuite component
+          echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite component
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled

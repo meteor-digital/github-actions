@@ -8,12 +8,11 @@
   "properties": {
     "quality_checks": {
       "type": "object",
-      "description": "Code quality check configuration",
-      "required": ["enabled_tools"],
+      "description": "Configuration for code quality checks and tools",
       "properties": {
         "enabled_tools": {
           "type": "array",
-          "description": "List of quality tools to run",
+          "description": "List of quality tools to enable",
           "items": {
             "type": "string",
             "enum": [
@@ -22,59 +21,84 @@
               "phpstan",
               "rector",
               "phpunit",
-              "composer-validate"
+              "composer-validate",
+              "phpunuhi"
             ]
           },
-          "minItems": 1,
-          "uniqueItems": true,
-          "examples": [
-            ["php-cs-fixer", "psalm", "rector", "phpunit"],
-            ["php-cs-fixer", "phpstan", "rector", "phpunit", "composer-validate"]
-          ]
+          "uniqueItems": true
+        },
+        "tool_binaries": {
+          "type": "object",
+          "description": "Override default binary paths for quality tools",
+          "properties": {
+            "php-cs-fixer": {
+              "type": "string",
+              "description": "Path to php-cs-fixer binary (default: vendor/bin/php-cs-fixer)"
+            },
+            "psalm": {
+              "type": "string",
+              "description": "Path to psalm binary (default: vendor/bin/psalm)"
+            },
+            "phpstan": {
+              "type": "string",
+              "description": "Path to phpstan binary (default: vendor/bin/phpstan)"
+            },
+            "rector": {
+              "type": "string",
+              "description": "Path to rector binary (default: vendor/bin/rector)"
+            },
+            "phpunit": {
+              "type": "string",
+              "description": "Path to phpunit binary (default: vendor/bin/phpunit)"
+            },
+            "phpunuhi": {
+              "type": "string",
+              "description": "Path to phpunuhi binary (default: vendor/bin/phpunuhi)"
+            }
+          },
+          "additionalProperties": false
         },
         "custom_checks": {
           "type": "array",
           "description": "Custom quality checks to run",
           "items": {
-            "$ref": "#/definitions/custom_check"
-          },
-          "examples": [
-            [
-              {
-                "name": "phpunuhi",
-                "command": "php ./vendor/bin/phpunuhi validate:all"
+            "type": "object",
+            "required": ["name", "command"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the custom check"
               },
-              {
-                "name": "security-audit",
-                "command": "composer audit"
+              "command": {
+                "type": "string",
+                "description": "Command to execute for the custom check"
               }
-            ]
-          ]
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
-    }
-  },
-  "definitions": {
-    "custom_check": {
+    },
+    "notifications": {
       "type": "object",
-      "description": "Custom quality check definition",
-      "required": ["name", "command"],
+      "description": "Notification settings for quality checks",
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the custom check",
-          "pattern": "^[a-zA-Z][a-zA-Z0-9-_]*$",
-          "examples": ["phpunuhi", "security-audit", "dependency-check"]
-        },
-        "command": {
-          "type": "string",
-          "description": "Shell command to execute for the check",
-          "examples": [
-            "php ./vendor/bin/phpunuhi validate:all",
-            "composer audit",
-            "composer outdated --direct"
-          ]
+        "teams": {
+          "type": "object",
+          "description": "Microsoft Teams notification settings",
+          "properties": {
+            "webhook_secret": {
+              "type": "string",
+              "description": "Secret name containing Teams webhook URL"
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Timezone for notification timestamps",
+              "default": "Europe/Amsterdam"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

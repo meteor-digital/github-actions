@@ -2,7 +2,7 @@
 
 # Configuration validation script for local development
 # Usage: ./validate-config.sh [config-directory]
-# 
+#
 # Note: This is a simplified version for local use.
 # The GitHub workflows use the validate-config action for comprehensive validation.
 
@@ -42,22 +42,76 @@ echo "✅ All required configuration files found"
 # Basic YAML syntax validation (if yq is available)
 if command -v yq &> /dev/null; then
     echo "📝 Validating YAML syntax..."
-    
+
     for file in "${REQUIRED_FILES[@]}"; do
-        if yq eval '.' "$file" > /dev/null 2>&1; then
+        # Try different yq syntax variants
+        if cat "$file" | yq . >/dev/null 2>&1; then
+            echo "  ✅ $file - Valid YAML"
+        elif yq eval '.' "$file" >/dev/null 2>&1; then
             echo "  ✅ $file - Valid YAML"
         else
             echo "  ❌ $file - Invalid YAML syntax"
             exit 1
         fi
     done
+    
+    # Enhanced quality-config.yml validation
+    if [ -f "$CONFIG_DIR/quality-config.yml" ]; then
+        echo "📋 Validating quality configuration..."
+        
+        # Check if quality_checks section exists
+        if ! cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks' >/dev/null 2>&1; then
+            echo "  ❌ Missing required 'quality_checks' section"
+            exit 1
+        fi
+        
+        # Check if enabled_tools is defined
+        tools_count=$(cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks.enabled_tools | length' 2>/dev/null || echo "0")
+        if [ "$tools_count" = "0" ] || [ "$tools_count" = "null" ]; then
+            echo "  ⚠️  No quality tools enabled"
+        else
+            echo "  ✅ Found $tools_count enabled quality tools"
+        fi
+        
+        # Check if tool_binaries section exists and validate structure
+        if cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks.tool_binaries' >/dev/null 2>&1; then
+            binaries_count=$(cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks.tool_binaries | keys | length' 2>/dev/null || echo "0")
+            if [ "$binaries_count" != "0" ] && [ "$binaries_count" != "null" ]; then
+                echo "  ✅ Found $binaries_count tool binary overrides"
+            fi
+        fi
+    fi
 else
     echo "⚠️  yq not found - skipping YAML syntax validation"
     echo "   Install yq: https://github.com/mikefarah/yq"
 fi
 
+# JSON Schema validation (if ajv-cli is available)
+if command -v npx >/dev/null 2>&1 && [ -f "schemas/quality-config.schema.json" ]; then
+    echo "🔍 Validating against JSON schema..."
+    
+    if [ -f "$CONFIG_DIR/quality-config.yml" ]; then
+        TEMP_JSON=$(mktemp --suffix=.json)
+        cat "$CONFIG_DIR/quality-config.yml" | yq . > "$TEMP_JSON"
+        
+        if npx ajv validate -s "schemas/quality-config.schema.json" -d "$TEMP_JSON" 2>/dev/null; then
+            echo "  ✅ Schema validation passed"
+        else
+            echo "  ❌ Schema validation failed"
+            echo "  Run with details: npx ajv validate -s schemas/quality-config.schema.json -d <json-file>"
+        fi
+        
+        rm -f "$TEMP_JSON"
+    fi
+elif [ ! -f "schemas/quality-config.schema.json" ]; then
+    echo "⚠️  Schema file not found - skipping JSON schema validation"
+else
+    echo "⚠️  ajv-cli not found - skipping JSON schema validation"
+    echo "   Install with: npm install ajv-cli"
+fi
+
 echo ""
-echo "✅ Basic configuration validation completed"
+echo "✅ Configuration validation completed"
 echo ""
 echo "💡 For comprehensive validation (schema, content, etc.):"
 echo "   Use the validate-config GitHub Action in your workflows"
