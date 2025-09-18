@@ -43,6 +43,8 @@ runs:
         ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
           cd '$DEPLOY_PATH/$RELEASE_DIR'
           while IFS= read -r folder; do
+            # Trim whitespace from folder name
+            folder=\$(echo \"\$folder\" | sed 's/^[[:space:]]*//;s/[[:space:]]*\$//')
             if [ -n \"\$folder\" ]; then
               echo \"Removing and symlinking: \$folder\"
               rm -rf \"\$folder\"

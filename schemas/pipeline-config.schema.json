@@ -223,7 +223,7 @@
                 "type": "string"
               },
               "examples": [
-                ["bin/console database:migrate --all", "bin/console plugin:refresh"],
+                ["bin/console database:migrate --all"],
                 ["php artisan migrate --force"],
                 ["bin/console doctrine:migrations:migrate --no-interaction"]
               ]
@@ -235,7 +235,7 @@
                 "type": "string"
               },
               "examples": [
-                ["bin/console cache:warmup", "bin/console theme:compile --active-only"],
+                ["bin/console theme:dump", "bin/console theme:compile --active-only"],
                 ["php artisan config:cache", "php artisan route:cache"],
                 ["bin/console cache:warmup --env=prod"]
               ]

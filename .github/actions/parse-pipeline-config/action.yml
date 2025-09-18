@@ -219,9 +219,9 @@ runs:
                 public/thumbnail
                 config/jwt
                 var/log"
-                DEFAULT_PRE_DEPLOY="bin/console cache:warmup --no-optional-warmers
-                bin/console plugin:refresh"
-                DEFAULT_POST_DEPLOY="bin/console theme:compile --active-only
+                DEFAULT_PRE_DEPLOY="bin/console cache:warmup --no-optional-warmers"
+                DEFAULT_POST_DEPLOY="bin/console theme:dump
+                bin/console theme:compile --active-only
                 bin/console scheduled-task:register
                 bin/console dal:refresh:index"
                 MIGRATION_COMMAND="bin/console database:migrate --all"
@@ -264,18 +264,25 @@ runs:
             POST_DEPLOY_COMMANDS="$DEFAULT_POST_DEPLOY"
             
             # Parse deployment configuration using yq
-            HOST=$(yq eval ".deployment.environments.$ENVIRONMENT.host" "$CONFIG_FILE" 2>/dev/null)
-            DEPLOY_PATH=$(yq eval ".deployment.environments.$ENVIRONMENT.path" "$CONFIG_FILE" 2>/dev/null)
-            MAINTENANCE_MODE=$(yq eval ".deployment.environments.$ENVIRONMENT.maintenance_mode" "$CONFIG_FILE" 2>/dev/null)
+            HOST=$(yq eval ".deployment.environments.${ENVIRONMENT}.host" "$CONFIG_FILE" 2>/dev/null)
+            DEPLOY_PATH=$(yq eval ".deployment.environments.${ENVIRONMENT}.path" "$CONFIG_FILE" 2>/dev/null)
+            MAINTENANCE_MODE=$(yq eval ".deployment.environments.${ENVIRONMENT}.maintenance_mode" "$CONFIG_FILE" 2>/dev/null)
             
             # Parse hosting configuration
             PROVIDER=$(yq eval ".deployment.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
-            SSH_PORT=$(yq eval ".deployment.hosting.ssh_port" "$CONFIG_FILE" 2>/dev/null)
-            SSH_USER=$(yq eval ".deployment.hosting.ssh_user" "$CONFIG_FILE" 2>/dev/null)
             PHP_SERVICE=$(yq eval ".deployment.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
             
+            # Parse SSH port (environment-specific with default fallback)
+            SSH_PORT=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_port" "$CONFIG_FILE" 2>/dev/null)
+            if [ -z "$SSH_PORT" ] || [ "$SSH_PORT" = "null" ]; then
+              SSH_PORT="22"
+            fi
+            
+            # Parse SSH user from environment-specific configuration
+            SSH_USER=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_user" "$CONFIG_FILE" 2>/dev/null)
+            
             # Parse messenger worker ID
-            ENV_MESSENGER_WORKER_ID=$(yq eval ".deployment.environments.$ENVIRONMENT.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
+            ENV_MESSENGER_WORKER_ID=$(yq eval ".deployment.environments.${ENVIRONMENT}.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
             if [ -n "$ENV_MESSENGER_WORKER_ID" ] && [ "$ENV_MESSENGER_WORKER_ID" != "null" ]; then
               MESSENGER_WORKER_ID="$ENV_MESSENGER_WORKER_ID"
             else

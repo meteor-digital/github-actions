@@ -41,7 +41,6 @@ runs:
           # Check if we need to delete old releases
           if [ \"\$RELEASES\" -gt \"$KEEP_RELEASES\" ]; then
               # Delete oldest releases
-              cd $DEPLOY_PATH/releases/
-              && ls -A1 | sort -rn | tail -n +\$TAIL_FROM_LINE | xargs -r rm -rf
+              cd $DEPLOY_PATH/releases/ && ls -A1 | sort -rn | tail -n +\$TAIL_FROM_LINE | xargs -r rm -rf
           fi
         "

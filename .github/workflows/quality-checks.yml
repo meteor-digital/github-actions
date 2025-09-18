@@ -385,10 +385,12 @@ jobs:
           echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
           echo 'MESSENGER_TRANSPORT_DSN=amqp://guest:guest@127.0.0.1:5672' >> .env.test.local
           
-          # Add additional test environment variables from secret
+          # Add additional test environment variables
           if [ -n "${{ secrets.test_env_vars }}" ]; then
             echo "🔐 Adding test environment variables from secret..."
-            echo "${{ secrets.test_env_vars }}" >> .env.test.local
+            cat >> .env.test.local << 'EOF'
+          ${{ secrets.test_env_vars }}
+          EOF
           else
             echo "💡 No additional test environment variables provided"
           fi

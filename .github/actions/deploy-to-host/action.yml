@@ -43,13 +43,26 @@ runs:
         environment: ${{ inputs.environment }}
         project_type: ${{ steps.project_type.outputs.type }}
 
-    - name: Setup deployment environment
+    - name: Set deployment variables
       id: setup
-      uses: meteor-digital/github-actions/.github/actions/setup-deployment@main
-      with:
-        host: ${{ steps.config.outputs.host }}
-        ssh_port: ${{ steps.config.outputs.ssh_port }}
-        ssh_private_key: ${{ inputs.ssh_private_key }}
+      shell: bash
+      run: |
+        # Format date and set as output for release directory naming
+        DEPLOY_DATE=$(date +'%Y%m%d.%H%M')
+        echo "deploy_date=$DEPLOY_DATE" >> $GITHUB_OUTPUT
+        
+        # Set release directory path
+        RELEASE_DIR="releases/$DEPLOY_DATE"
+        echo "release_dir=$RELEASE_DIR" >> $GITHUB_OUTPUT
+
+    - name: Setup SSH known_hosts
+      shell: bash
+      run: |
+        echo "🔐 Setting up SSH known_hosts..."
+        mkdir -p ~/.ssh
+        ssh-keyscan -p ${{ steps.config.outputs.ssh_port }} ${{ steps.config.outputs.host }} >> ~/.ssh/known_hosts
+        chmod 700 ~/.ssh
+        chmod 600 ~/.ssh/known_hosts
 
     - name: Sync files to host
       uses: burnett01/rsync-deployments@7.0.2
@@ -61,6 +74,12 @@ runs:
         remote_port: ${{ steps.config.outputs.ssh_port }}
         remote_user: ${{ steps.config.outputs.ssh_user }}
         remote_key: ${{ inputs.ssh_private_key }}
+
+    # Set up SSH agent for direct SSH commands (separate from rsync which uses its own key handling)
+    - name: Configure SSH for direct commands
+      uses: webfactory/ssh-agent@v0.9.1
+      with:
+        ssh-private-key: ${{ inputs.ssh_private_key }}
 
     - name: Create shared folder symlinks
       uses: meteor-digital/github-actions/.github/actions/create-symlinks@main
@@ -200,14 +219,10 @@ runs:
         
         ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
           # Disable maintenance mode (framework-specific)
-          [ -d $DEPLOY_PATH/current ]
-          && cd $DEPLOY_PATH/current
-          && ${{ steps.config.outputs.maintenance_disable_cmd }}
-          || echo 'Skipping maintenance disable'
+          [ -d $DEPLOY_PATH/current ] && cd $DEPLOY_PATH/current && ${{ steps.config.outputs.maintenance_disable_cmd }} || echo 'Skipping maintenance disable'
           
           # Clear cache for Shopware/Symfony projects
           if [ '$PROJECT_TYPE' = 'shopware' ] || [ '$PROJECT_TYPE' = 'symfony' ]; then
-            cd $DEPLOY_PATH/releases/$DEPLOY_DATE
-            && bin/console cache:clear
+            cd $DEPLOY_PATH/releases/$DEPLOY_DATE && bin/console cache:clear
           fi
         " || echo "⚠️  Cleanup encountered issues but continued"
