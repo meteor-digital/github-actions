@@ -124,7 +124,7 @@ runs:
       if: steps.cache-deps.outputs.cache-hit != 'true'
       uses: meteor-digital/github-actions/.github/actions/composer-setup@main
       with:
-        args: '--prefer-dist --no-progress --no-interaction --optimize-autoloader'
+        args: '--prefer-dist --no-progress --no-interaction --optimize-autoloader --no-scripts'
         with_dev: ${{ inputs.composer_with_dev }}
       env:
         COMPOSER_AUTH: ${{ inputs.composer_auth }}
