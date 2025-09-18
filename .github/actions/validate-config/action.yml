@@ -14,30 +14,73 @@ inputs:
     description: 'Validate against JSON schemas (requires ajv-cli)'
     required: false
     default: 'true'
+  check_changed_only:
+    description: 'Only validate if config files have changed (for PR checks)'
+    required: false
+    default: 'false'
 
 outputs:
   validation_result:
-    description: 'Validation result (success, warning, error)'
-    value: ${{ steps.validate.outputs.result }}
-  missing_files:
-    description: 'List of missing configuration files'
-    value: ${{ steps.validate.outputs.missing_files }}
-  validation_errors:
-    description: 'List of validation errors'
-    value: ${{ steps.validate.outputs.validation_errors }}
+    description: 'Validation result (success, warning, error, skipped)'
+    value: ${{ steps.validate.outputs.result || steps.skip.outputs.result }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Validate configuration files
+    - name: '📥 Checkout code'
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for changed-files detection
+
+    - name: '🔍 Check for configuration file changes'
+      id: check-changes
+      if: inputs.check_changed_only == 'true'
+      uses: tj-actions/changed-files@v46
+      with:
+        files: |
+          ${{ inputs.config_directory }}/*-config.yml
+
+    - name: '🔧 Install validation tools'
+      if: inputs.check_changed_only != 'true' || steps.check-changes.outputs.any_changed == 'true'
+      shell: bash
+      run: |
+        echo "📦 Installing validation tools..."
+        
+        # Install yq for YAML parsing if not available
+        if ! command -v yq >/dev/null 2>&1; then
+          echo "  📥 Installing yq..."
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          echo "  ✅ yq installed"
+        else
+          echo "  ✅ yq already available"
+        fi
+        
+        # Install ajv-cli for JSON schema validation if needed and not available
+        if [ "${{ inputs.validate_schemas }}" = "true" ] && ! command -v ajv >/dev/null 2>&1; then
+          echo "  📥 Installing ajv-cli..."
+          npm install -g ajv-cli
+          echo "  ✅ ajv-cli installed"
+        else
+          echo "  ✅ ajv-cli available or not needed"
+        fi
+
+    - name: '🔍 Validate configuration files'
       id: validate
+      if: inputs.check_changed_only != 'true' || steps.check-changes.outputs.any_changed == 'true'
       shell: bash
       run: |
         CONFIG_DIR="${{ inputs.config_directory }}"
         FAIL_ON_MISSING="${{ inputs.fail_on_missing }}"
         VALIDATE_SCHEMAS="${{ inputs.validate_schemas }}"
+        CHECK_CHANGED_ONLY="${{ inputs.check_changed_only }}"
         
-        echo "🔍 Validating CI/CD configuration in $CONFIG_DIR..."
+        if [ "$CHECK_CHANGED_ONLY" = "true" ]; then
+          echo "🔍 Validating changed CI/CD configuration files in $CONFIG_DIR..."
+          echo "📄 Changed files: ${{ steps.check-changes.outputs.all_changed_files }}"
+        else
+          echo "🔍 Validating all CI/CD configuration files in $CONFIG_DIR..."
+        fi
         
         # Required configuration files
         REQUIRED_FILES=(
@@ -279,3 +322,12 @@ runs:
         if [ "$RESULT" = "error" ]; then
             exit 1
         fi
+
+    - name: '💡 Skip validation (no changes)'
+      id: skip
+      if: inputs.check_changed_only == 'true' && steps.check-changes.outputs.any_changed != 'true'
+      shell: bash
+      run: |
+        echo "💡 No configuration files changed, skipping validation"
+        echo "✅ All configuration files are assumed valid"
+        echo "result=skipped" >> $GITHUB_OUTPUT
