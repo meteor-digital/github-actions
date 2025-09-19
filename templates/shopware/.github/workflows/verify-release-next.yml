@@ -26,4 +26,5 @@ jobs:
       config_path: ".github/pipeline-config.yml"
       schedule_timezone: "Europe/Brussels"
     secrets:
-      composer_auth: ${{ secrets.COMPOSER_AUTH }}
+      composer_auth: '{"http-basic":{"satis.meteor.be":{"username":"${{ secrets.METEOR_SATIS_USERNAME }}","password":"${{ secrets.METEOR_SATIS_PASSWORD }}"}},"bearer":{"packages.shopware.com":"${{ secrets.SHOPWARE_STORE_BEARER_TOKEN }}"}}'
+      test_env_vars: ${{ secrets.TEST_ENV_VARS }}

@@ -4,59 +4,27 @@
 project:
   name: "my-shopware-shop"  # Used for artifacts, notifications, and releases
   # type: "shopware"  # Auto-detected from shopware-project.yml
-  
+
 runtime:
   php_version: "8.1"  # PHP version for builds and quality checks
   node_version: "18"  # Node.js version for asset compilation
-  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
+  # php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
   
-build:
-  # Files and directories to exclude from build artifacts
-  exclude_patterns: |
-    *.git*
-    node_modules/*
-    tests/*
-    .env*
-    .env.local*
-    var/cache/*
-    var/log/*
-    public/bundles/*
-    public/css/*
-    public/js/*
-    public/theme/*
-    *.log
-    *.cache
-    .phpunit.result.cache
-    .php-cs-fixer.cache
-  
-  # Commands to run during build process
-  build_commands:
-    - "npm run build"
-    - "composer install --no-dev --optimize-autoloader"
-  
-  # Build artifact configuration
-  artifacts:
-    retention_days: 7  # Keep artifacts for 7 days
+notifications:
+  notification_webhook: "https://cronos.webhook.office.com/webhookb2/3f825001-1c2d-4342-95be-6bcd69e61373@49c3d703-3579-47bf-a888-7c913fbdced9/IncomingWebhook/2bc777eccdcb4609a2ce59e4b169eb86/1260a310-a7bc-49e0-85f0-83993daa24d3/V2nohSwxgbdodaX6_t-2a8COguzwAthQ7QiqzJUb-20_Q1"
 
 quality_checks:
-  # Standard quality tools (use their default config files)
   enabled_tools:
-    - "php-cs-fixer"      # Uses .php-cs-fixer.php
-    - "psalm"             # Uses psalm.xml (legacy support)
-    - "phpstan"           # Uses phpstan.neon (recommended)
-    - "rector"            # Uses rector.php
-    - "phpunit"           # Uses phpunit.xml or phpunit.xml.dist
-    - "composer-validate" # Validates composer.json
-    
-  # Test environment configuration
-  test_environment:
-    # Additional environment variables for .env.test.local
-    # These will be added to the standard DATABASE_URL and MESSENGER_TRANSPORT_DSN
-    # Use {{{SECRET_NAME}}} placeholders for secrets that will be replaced at runtime
-    # Regular values can be used directly
-    env_vars:
-      # Add more project-specific environment variables as needed
-      # - 'CUSTOM_API_KEY="${{ secrets.CUSTOM_API_KEY }}"'
+    - "php-cs-fixer"
+    - "psalm"
+    - "rector"
+    - "phpunit"
+    - "composer-validate"
+    - "phpunuhi"
+  
+  # Override default binary paths (defaults are vendor/bin/[tool])
+  tool_binaries:
+    php-cs-fixer: "./vendor/meteor/shop6-project-conventions/tools/php-cs-fixer"
     
   # Optional: Custom quality checks specific to your project
   # custom_checks:
@@ -65,8 +33,42 @@ quality_checks:
   #   - name: "security-audit"
   #     command: "composer audit"
 
-notifications:
-  notification_webhook: "https://cronos.webhook.office.com/webhookb2/KEY1/IncomingWebhook/KEY2"
+build:
+  # Files and directories to exclude from build artifacts
+  exclude_patterns: |
+    *.git*
+    node_modules/*
+    tests/*
+    *.md
+    docker-compose*
+    devenv*
+    .editorconfig
+    .envrc
+    .vscode
+    composer*
+    flake*
+    symfony.lock
+    package*.json
+    phpunit.xml*
+    psalm*
+    rector.php
+    .php-cs-fixer.php
+    grumphp.yml
+    phpunuhi.xml
+    bitbucket-pipelines.yml
+    shopware-project.yml
+    Jenkinsfile*
+    patch/*
+    scripts/*
+  
+  # Commands to run during build process
+  build_commands: []
+    # - "npm run build"
+    # - "composer install --no-dev --optimize-autoloader"
+
+  # Build artifact configuration
+  artifacts:
+    retention_days: 7
 
 deployment:
   environments:
@@ -93,7 +95,7 @@ deployment:
   # Shopware defaults are automatically applied:
   # - shared_folders: ["files", "public/media", "public/sitemap", "public/thumbnail", "config/jwt", "var/log"]
   # - pre_deploy: ["bin/console cache:warmup --no-optional-warmers"]
-  # - post_deploy: ["bin/console theme:compile --active-only", "bin/console scheduled-task:register", "bin/console dal:refresh:index"]
+  # - post_deploy: ["bin/console theme:dump", "bin/console theme:compile --active-only", "bin/console scheduled-task:register", "bin/console dal:refresh:index"]
   # - cleanup: keep_releases: 3
   # - Database migrations are handled separately in the deployment workflow
 
@@ -105,6 +107,9 @@ deployment:
   #   pre_deploy:
   #     - "custom-pre-deploy-command"  # Add custom pre-deploy commands
   #   post_deploy:
+  #     - "bin/console theme:dump"
+  #     - "bin/console theme:compile --active-only"
+  #     - "bin/console database:migrate --all MyProject"
   #     - "custom-post-deploy-command"  # Add custom post-deploy commands
   # 
   # cleanup:

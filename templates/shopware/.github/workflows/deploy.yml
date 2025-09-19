@@ -26,56 +26,15 @@ on:
         type: string
 
 jobs:
-  determine-environment:
-    runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
-    outputs:
-      environment: ${{ steps.env.outputs.environment }}
-      should_deploy: ${{ steps.env.outputs.should_deploy }}
-      artifact_name: ${{ steps.env.outputs.artifact_name }}
-      artifact_run_id: ${{ steps.env.outputs.artifact_run_id }}
-    steps:
-      - name: Determine environment and artifact
-        id: env
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            # For manual deployments, no artifact needed (uses release assets)
-            echo "artifact_name=" >> $GITHUB_OUTPUT
-            echo "artifact_run_id=" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
-            # Determine environment and artifact based on branch
-            BRANCH="${{ github.event.workflow_run.head_branch }}"
-            echo "Determining deployment for branch: $BRANCH"
-            
-            if [[ "$BRANCH" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-              # Release branch -> ACC environment
-              VERSION="${BASH_REMATCH[1]}"
-              echo "environment=acc" >> $GITHUB_OUTPUT
-              echo "artifact_name=acc-build-${VERSION}" >> $GITHUB_OUTPUT
-            elif [[ "$BRANCH" =~ ^test/ ]]; then
-              # Test branch -> TEST environment
-              echo "environment=test" >> $GITHUB_OUTPUT
-              echo "artifact_name=test-build" >> $GITHUB_OUTPUT
-            fi
-            
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "artifact_run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
-          else
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
-          fi
-
   deploy:
-    needs: determine-environment
-    if: needs.determine-environment.outputs.should_deploy == 'true'
     uses: meteor-digital/github-actions/.github/workflows/deploy.yml@main
     with:
-      environment: ${{ needs.determine-environment.outputs.environment }}
       config_path: ".github/pipeline-config.yml"
-      artifact_name: ${{ needs.determine-environment.outputs.artifact_name }}
-      artifact_run_id: ${{ needs.determine-environment.outputs.artifact_run_id }}
-      release_version: ${{ github.event.inputs.version }}
+      manual_environment: ${{ github.event.inputs.environment }}
+      manual_version: ${{ github.event.inputs.version }}
+      workflow_run_id: ${{ github.event.workflow_run.id }}
+      workflow_run_branch: ${{ github.event.workflow_run.head_branch }}
+      workflow_run_conclusion: ${{ github.event.workflow_run.conclusion }}
+      event_name: ${{ github.event_name }}
     secrets:
       ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-      ssh_user: ${{ secrets.SSH_USER }}

@@ -13,4 +13,4 @@ jobs:
     with:
       config_path: ".github/pipeline-config.yml"
     secrets:
-      composer_auth: ${{ secrets.COMPOSER_AUTH }}
+      composer_auth: '{"http-basic":{"satis.meteor.be":{"username":"${{ secrets.METEOR_SATIS_USERNAME }}","password":"${{ secrets.METEOR_SATIS_PASSWORD }}"}},"bearer":{"packages.shopware.com":"${{ secrets.SHOPWARE_STORE_BEARER_TOKEN }}"}}'
