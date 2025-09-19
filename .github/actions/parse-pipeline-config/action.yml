@@ -172,7 +172,7 @@ runs:
         PARSED_PHP_VERSION=$(yq eval '.runtime.php_version' "$CONFIG_FILE" 2>/dev/null)
         PARSED_NODE_VERSION=$(yq eval '.runtime.node_version' "$CONFIG_FILE" 2>/dev/null)
         PARSED_PHP_EXTENSIONS=$(yq eval '.runtime.php_extensions' "$CONFIG_FILE" 2>/dev/null)
-        PARSED_RETENTION_DAYS=$(yq eval '.artifacts.retention_days' "$CONFIG_FILE" 2>/dev/null)
+        PARSED_RETENTION_DAYS=$(yq eval '.build.artifacts.retention_days' "$CONFIG_FILE" 2>/dev/null)
         NOTIFICATION_WEBHOOK=$(yq eval '.notifications.notification_webhook' "$CONFIG_FILE" 2>/dev/null)
         
         # Apply parsed values with validation

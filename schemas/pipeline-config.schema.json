@@ -83,30 +83,30 @@
             ["npm run build", "composer install --no-dev", "php artisan config:cache", "php artisan route:cache"],
             ["npm run build", "composer install --no-dev", "bin/console cache:warmup --env=prod"]
           ]
-        }
-      },
-      "additionalProperties": false
-    },
-    "artifacts": {
-      "type": "object",
-      "description": "Build artifact configuration",
-      "properties": {
-        "retention_days": {
-          "type": "integer",
-          "description": "Number of days to retain build artifacts",
-          "minimum": 1,
-          "maximum": 90,
-          "default": 7
         },
-        "naming_pattern": {
-          "type": "string",
-          "description": "Pattern for artifact naming. Available variables: {environment}, {version}, {project}",
-          "default": "{environment}-build-{version}",
-          "examples": [
-            "{environment}-build-{version}",
-            "{project}-{environment}-{version}",
-            "build-{project}-{environment}-{version}"
-          ]
+        "artifacts": {
+          "type": "object",
+          "description": "Build artifact configuration",
+          "properties": {
+            "retention_days": {
+              "type": "integer",
+              "description": "Number of days to retain build artifacts",
+              "minimum": 1,
+              "maximum": 90,
+              "default": 7
+            },
+            "naming_pattern": {
+              "type": "string",
+              "description": "Pattern for artifact naming. Available variables: {environment}, {version}, {project}",
+              "default": "{environment}-build-{version}",
+              "examples": [
+                "{environment}-build-{version}",
+                "{project}-{environment}-{version}",
+                "build-{project}-{environment}-{version}"
+              ]
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

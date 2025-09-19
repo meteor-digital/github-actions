@@ -34,8 +34,9 @@ build:
     - "bin/console cache:warmup --env=prod"
     - "bin/console assets:install --env=prod"
   
-artifacts:
-  retention_days: 7  # Keep artifacts for 7 days
+  # Build artifact configuration
+  artifacts:
+    retention_days: 7  # Keep artifacts for 7 days
 
 quality_checks:
   # Standard quality tools (use their default config files)
