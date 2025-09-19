@@ -88,7 +88,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ steps.config.outputs.project_name }} Release ${{ github.ref_name }}
           body: |
-            ## 🚀 Production Release ${{ github.ref_name }}
+            🚀 Production Release ${{ github.ref_name }}
+
+            ---
             
             **Build Information:**
             - Project: ${{ steps.config.outputs.project_name }}
@@ -107,11 +109,14 @@ jobs:
           webhook_url: ${{ steps.config.outputs.notification_webhook }}
           color: "00FF00"
           message: |
-            ✅ Build artifact created: **${{ steps.determine_artifact_name.outputs.artifact_name }}**
+            ✅ Build Artifact Created
             
-            **Project:** ${{ steps.config.outputs.project_name }}
-            **Branch/Tag:** ${{ github.ref_name }}
-            **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            ---
+            
+            **📋 Details:**
+            - **Artifact:** `${{ steps.determine_artifact_name.outputs.artifact_name }}`
+            - **Branch/Tag:** ${{ github.ref_name }}
+            - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
       - name: Send failure notification
         if: failure() && steps.config.outputs.notification_webhook
@@ -120,9 +125,10 @@ jobs:
           webhook_url: ${{ steps.config.outputs.notification_webhook }}
           color: "FF0000"
           message: |
-            ❌ Build for **${{ steps.config.outputs.project_name }}** failed
+            ❌ Build Failed
             
-            **Branch/Tag:** ${{ github.ref_name }}
-            **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+            ---
             
-            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **📋 Details:**
+            - **Branch/Tag:** ${{ github.ref_name }}
+            - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})

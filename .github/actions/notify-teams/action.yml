@@ -8,6 +8,9 @@ inputs:
   message:
     description: 'Message content to send'
     required: true
+  title:
+    description: 'Optional explicit card title. If omitted, first line of message is used as title.'
+    required: false
   color:
     description: 'Message color (hex code without #, e.g., FF0000 for red)'
     required: false
@@ -28,16 +31,22 @@ runs:
         COLOR='${{ inputs.color }}'
         MESSAGE='${{ inputs.message }}'
 
-        # First line becomes the title/summary; full message becomes body text
-        TITLE=$(printf "%s" "$MESSAGE" | sed -n '1p')
-        BODY_MD="$MESSAGE"
+        INPUT_TITLE='${{ inputs.title }}'
+        if [ -n "$INPUT_TITLE" ]; then
+          TITLE="$INPUT_TITLE"
+          BODY_MD=$(printf "%s" "$MESSAGE" | sed '/./,$!d')
+        else
+          # First line becomes the title/summary; remainder becomes body text
+          TITLE=$(printf "%s" "$MESSAGE" | sed -n '1p')
+          BODY_MD=$(printf "%s" "$MESSAGE" | sed '1d' | sed '/./,$!d')
+        fi
 
         RUN_URL='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
         # Build MessageCard payload. Teams expects hex color without leading '#'.
         jq -n \
           --arg color "$COLOR" \
-          --arg summary "$TITLE" \
+          --arg summary "${{ github.repository }}" \
           --arg title "$TITLE" \
           --arg text "$BODY_MD" \
           --arg runUrl "$RUN_URL" \

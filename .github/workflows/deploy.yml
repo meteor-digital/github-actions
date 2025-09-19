@@ -167,7 +167,14 @@ jobs:
         with:
           webhook_url: ${{ needs.setup.outputs.notification_webhook }}
           color: "FFFF00"
-          message: "🚀 Deploy **${{ needs.setup.outputs.project_name }}** to **${{ needs.setup.outputs.final_environment }}**"
+          message: |
+            🚀 Deployment Started
+            
+            --- 
+
+            **📋 Details:**
+            - **Environment:** `${{ needs.setup.outputs.final_environment }}`
+            - **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
         
       - name: Download build artifact from workflow run
         if: needs.setup.outputs.final_artifact_name && needs.setup.outputs.final_artifact_run_id
@@ -204,11 +211,14 @@ jobs:
           webhook_url: ${{ needs.setup.outputs.notification_webhook }}
           color: "00FF00"
           message: |
-            ✅ Deploy **${{ needs.setup.outputs.project_name }}** to **${{ needs.setup.outputs.final_environment }}** SUCCESS
+            ✅ Deployment Successful
             
-            **Environment:** ${{ needs.setup.outputs.final_environment }}
-            **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
-            **Deployed at:** ${{ needs.setup.outputs.deploy_date }}
+            ---
+            
+            **📋 Details:**
+            - **Environment:** `${{ needs.setup.outputs.final_environment }}`
+            - **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **Deployed at:** ${{ needs.setup.outputs.deploy_date }}
           
       - name: Send failure notification
         if: failure() && needs.setup.outputs.notification_webhook
@@ -217,9 +227,10 @@ jobs:
           webhook_url: ${{ needs.setup.outputs.notification_webhook }}
           color: "FF0000"
           message: |
-            ❌ Deploy **${{ needs.setup.outputs.project_name }}** to **${{ needs.setup.outputs.final_environment }}** FAILED
+            ❌ Deployment Failed
             
-            **Environment:** ${{ needs.setup.outputs.final_environment }}
-            **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            ---
             
-            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **📋 Details:**
+            - **Environment:** `${{ needs.setup.outputs.final_environment }}`
+            - **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}

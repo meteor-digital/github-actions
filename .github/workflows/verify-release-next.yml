@@ -165,10 +165,16 @@ jobs:
           color: "FF0000"
           timezone: ${{ inputs.schedule_timezone }}
           message: |
-            🚨 **${{ steps.ci_config.outputs.project_name }}** release branch validation failed!
+            🚨 Release Branch Validation Failed
             
-            **Branch:** ${{ inputs.branch_name }}
-            **Commit:** [${{ needs.check-commit-changes.outputs.commit_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ needs.check-commit-changes.outputs.commit_sha }}) by ${{ needs.check-commit-changes.outputs.commit_author }}
-            **Message:** ${{ needs.check-commit-changes.outputs.commit_message }}
+            ---
             
-            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            **📋 Details:**
+            - **Branch:** `${{ inputs.branch_name }}`
+            - **Author:** ${{ needs.check-commit-changes.outputs.commit_author }}
+            - **Commit:** [${{ needs.check-commit-changes.outputs.commit_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ needs.check-commit-changes.outputs.commit_sha }})
+            
+            &nbsp;
+            
+            **💬 Commit Message:**
+            > ${{ needs.check-commit-changes.outputs.commit_message }}
