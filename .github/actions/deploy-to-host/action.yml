@@ -68,7 +68,7 @@ runs:
       id: excludes
       shell: bash
       run: |
-        EXCLUDE_FILE="/tmp/rsync-excludes"
+        EXCLUDE_FILE="rsync-excludes.txt"
         echo "🚫 Preparing rsync exclude patterns..."
         
         # Check for project-specific rsync excludes file
@@ -81,24 +81,24 @@ runs:
         else
           echo "📄 Using default rsync excludes"
           # Create default rsync excludes for deployment
-          cat > "$EXCLUDE_FILE" <<-'EOF'
-		.git/
-		.github/
-		var/
-		public/media/
-		public/thumbnail/
-		public/sitemap/
-		scripts/
-		tests/
-		.gitignore
-		.gitattributes
-		composer*
-		package*.json
-		symfony.lock
-		rector.php
-		.php-cs-fixer.php
-		grumpphp.yml
-EOF
+          {
+            echo '.git/'
+            echo '.github/'
+            echo 'var/'
+            echo 'public/media/'
+            echo 'public/thumbnail/'
+            echo 'public/sitemap/'
+            echo 'scripts/'
+            echo 'tests/'
+            echo '.gitignore'
+            echo '.gitattributes'
+            echo 'composer*'
+            echo 'package*.json'
+            echo 'symfony.lock'
+            echo 'rector.php'
+            echo '.php-cs-fixer.php'
+            echo 'grumpphp.yml'
+          } > "$EXCLUDE_FILE"
         fi
         
         echo "exclude_file=$EXCLUDE_FILE" >> $GITHUB_OUTPUT
