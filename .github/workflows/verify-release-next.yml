@@ -19,6 +19,9 @@ on:
       composer_auth:
         description: 'Composer authentication JSON'
         required: true
+      test_env_vars:
+        description: 'Additional test environment variables'
+        required: false
 
 # Prevent multiple verify-release-next workflows from running simultaneously
 concurrency:
@@ -94,6 +97,7 @@ jobs:
       run_slow_testsuites: true
     secrets:
       composer_auth: ${{ secrets.composer_auth }}
+      test_env_vars: ${{ secrets.test_env_vars }}
 
   update-commit-status:
     name: '📊 Update commit status'
