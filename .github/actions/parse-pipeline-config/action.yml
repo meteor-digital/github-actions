@@ -287,9 +287,7 @@ runs:
         var/log"
             PRE_DEPLOY_COMMANDS="bin/console cache:warmup --no-optional-warmers"
             POST_DEPLOY_COMMANDS="bin/console theme:dump
-        bin/console theme:compile --active-only
-        bin/console scheduled-task:register
-        bin/console dal:refresh:index"
+        bin/console theme:compile --active-only"
             MIGRATION_COMMAND="bin/console database:migrate --all"
             MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
             MAINTENANCE_DISABLE_CMD="bin/console sales-channel:maintenance:disable --all"

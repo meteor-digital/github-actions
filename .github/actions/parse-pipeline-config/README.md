@@ -169,7 +169,7 @@ The action automatically applies framework-specific defaults:
 ### Shopware
 - **Shared folders**: `files`, `public/media`, `public/sitemap`, `public/thumbnail`, `config/jwt`, `var/log`
 - **Pre-deploy**: `bin/console cache:warmup --no-optional-warmers`
-- **Post-deploy**: `bin/console theme:dump`, `bin/console theme:compile --active-only`, `bin/console scheduled-task:register`, `bin/console dal:refresh:index`
+- **Post-deploy**: `bin/console theme:dump`, `bin/console theme:compile --active-only``
 - **Migration command**: `bin/console database:migrate --all`
 - **Maintenance enable**: `bin/console sales-channel:maintenance:enable --all`
 - **Maintenance disable**: `bin/console sales-channel:maintenance:disable --all`
