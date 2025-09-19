@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       config_path:
-        description: 'Path to quality configuration file'
+        description: 'Path to pipeline configuration file'
         type: string
-        default: '.github/quality-config.yml'
+        default: '.github/pipeline-config.yml'
     secrets:
       composer_auth:
         description: 'Composer authentication JSON'

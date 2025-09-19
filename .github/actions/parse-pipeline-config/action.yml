@@ -40,6 +40,29 @@ outputs:
     description: 'Notification webhook URL for notifications'
     value: ${{ steps.parse_ci.outputs.notification_webhook }}
   
+  # Quality Configuration outputs
+  enabled_tools:
+    description: 'Enabled quality tools from configuration'
+    value: ${{ steps.parse_ci.outputs.enabled_tools }}
+  php_cs_fixer_bin:
+    description: 'PHP-CS-Fixer binary path'
+    value: ${{ steps.parse_ci.outputs.php_cs_fixer_bin }}
+  psalm_bin:
+    description: 'Psalm binary path'
+    value: ${{ steps.parse_ci.outputs.psalm_bin }}
+  phpstan_bin:
+    description: 'PHPStan binary path'
+    value: ${{ steps.parse_ci.outputs.phpstan_bin }}
+  rector_bin:
+    description: 'Rector binary path'
+    value: ${{ steps.parse_ci.outputs.rector_bin }}
+  phpunit_bin:
+    description: 'PHPUnit binary path'
+    value: ${{ steps.parse_ci.outputs.phpunit_bin }}
+  phpunuhi_bin:
+    description: 'PHPUnuhi binary path'
+    value: ${{ steps.parse_ci.outputs.phpunuhi_bin }}
+  
   # Deployment Configuration outputs
   host:
     description: 'Deployment host'
@@ -192,6 +215,37 @@ runs:
         EXCLUDE_PATTERNS_YAML=$(yq eval '.build.exclude_patterns' "$CONFIG_FILE" 2>/dev/null)
         [ -n "$EXCLUDE_PATTERNS_YAML" ] && [ "$EXCLUDE_PATTERNS_YAML" != "null" ] && EXCLUDE_PATTERNS="$EXCLUDE_PATTERNS_YAML"
         
+        # Parse quality configuration
+        DEFAULT_TOOLS='["php-cs-fixer", "psalm", "phpstan", "rector", "phpunit", "composer-validate"]'
+        DEFAULT_PHP_CS_FIXER="./vendor/bin/php-cs-fixer"
+        DEFAULT_PSALM="./vendor/bin/psalm"
+        DEFAULT_PHPSTAN="./vendor/bin/phpstan"
+        DEFAULT_RECTOR="./vendor/bin/rector"
+        DEFAULT_PHPUNIT="./vendor/bin/phpunit"
+        DEFAULT_PHPUNUHI="./vendor/bin/phpunuhi"
+        
+        # Parse enabled tools from quality_checks section
+        ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools | @json' "$CONFIG_FILE" 2>/dev/null)
+        if [ "$ENABLED_TOOLS" = "null" ] || [ -z "$ENABLED_TOOLS" ]; then
+          ENABLED_TOOLS="$DEFAULT_TOOLS"
+        fi
+        
+        # Parse tool binary overrides from quality_checks section
+        PHP_CS_FIXER_BIN=$(yq eval '.quality_checks.tool_binaries.php-cs-fixer // ""' "$CONFIG_FILE" 2>/dev/null)
+        PSALM_BIN=$(yq eval '.quality_checks.tool_binaries.psalm // ""' "$CONFIG_FILE" 2>/dev/null)
+        PHPSTAN_BIN=$(yq eval '.quality_checks.tool_binaries.phpstan // ""' "$CONFIG_FILE" 2>/dev/null)
+        RECTOR_BIN=$(yq eval '.quality_checks.tool_binaries.rector // ""' "$CONFIG_FILE" 2>/dev/null)
+        PHPUNIT_BIN=$(yq eval '.quality_checks.tool_binaries.phpunit // ""' "$CONFIG_FILE" 2>/dev/null)
+        PHPUNUHI_BIN=$(yq eval '.quality_checks.tool_binaries.phpunuhi // ""' "$CONFIG_FILE" 2>/dev/null)
+        
+        # Use defaults if not specified
+        [ -z "$PHP_CS_FIXER_BIN" ] && PHP_CS_FIXER_BIN="$DEFAULT_PHP_CS_FIXER"
+        [ -z "$PSALM_BIN" ] && PSALM_BIN="$DEFAULT_PSALM"
+        [ -z "$PHPSTAN_BIN" ] && PHPSTAN_BIN="$DEFAULT_PHPSTAN"
+        [ -z "$RECTOR_BIN" ] && RECTOR_BIN="$DEFAULT_RECTOR"
+        [ -z "$PHPUNIT_BIN" ] && PHPUNIT_BIN="$DEFAULT_PHPUNIT"
+        [ -z "$PHPUNUHI_BIN" ] && PHPUNUHI_BIN="$DEFAULT_PHPUNUHI"
+        
         # Set outputs
         echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
         echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
@@ -199,6 +253,13 @@ runs:
         echo "php_extensions=$PHP_EXTENSIONS" >> $GITHUB_OUTPUT
         echo "retention_days=$RETENTION_DAYS" >> $GITHUB_OUTPUT
         echo "notification_webhook=$NOTIFICATION_WEBHOOK" >> $GITHUB_OUTPUT
+        echo "enabled_tools=$ENABLED_TOOLS" >> $GITHUB_OUTPUT
+        echo "php_cs_fixer_bin=$PHP_CS_FIXER_BIN" >> $GITHUB_OUTPUT
+        echo "psalm_bin=$PSALM_BIN" >> $GITHUB_OUTPUT
+        echo "phpstan_bin=$PHPSTAN_BIN" >> $GITHUB_OUTPUT
+        echo "rector_bin=$RECTOR_BIN" >> $GITHUB_OUTPUT
+        echo "phpunit_bin=$PHPUNIT_BIN" >> $GITHUB_OUTPUT
+        echo "phpunuhi_bin=$PHPUNUHI_BIN" >> $GITHUB_OUTPUT
         echo "build_commands<<EOF" >> $GITHUB_OUTPUT
         echo "$BUILD_COMMANDS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
@@ -400,6 +461,14 @@ runs:
         echo "  Notification webhook: ${{ steps.parse_ci.outputs.notification_webhook }}"
         echo "  Build commands: $(echo '${{ steps.parse_ci.outputs.build_commands }}' | wc -l) commands"
         echo "  Exclude patterns: $(echo '${{ steps.parse_ci.outputs.exclude_patterns }}' | wc -l) patterns"
+        echo "  Quality tools: ${{ steps.parse_ci.outputs.enabled_tools }}"
+        echo "  Tool binaries:"
+        echo "    php-cs-fixer: ${{ steps.parse_ci.outputs.php_cs_fixer_bin }}"
+        echo "    psalm: ${{ steps.parse_ci.outputs.psalm_bin }}"
+        echo "    phpstan: ${{ steps.parse_ci.outputs.phpstan_bin }}"
+        echo "    rector: ${{ steps.parse_ci.outputs.rector_bin }}"
+        echo "    phpunit: ${{ steps.parse_ci.outputs.phpunit_bin }}"
+        echo "    phpunuhi: ${{ steps.parse_ci.outputs.phpunuhi_bin }}"
         
         if [ -n "${{ inputs.environment }}" ] && [ -n "${{ inputs.project_type }}" ]; then
           echo "  Environment: ${{ inputs.environment }}"

@@ -15,7 +15,6 @@ echo "🔍 Validating CI/CD configuration in $CONFIG_DIR..."
 # Check if configuration files exist
 REQUIRED_FILES=(
     "$CONFIG_DIR/pipeline-config.yml"
-    "$CONFIG_DIR/quality-config.yml"
 )
 
 MISSING_FILES=()
@@ -55,30 +54,29 @@ if command -v yq &> /dev/null; then
         fi
     done
     
-    # Enhanced quality-config.yml validation
-    if [ -f "$CONFIG_DIR/quality-config.yml" ]; then
-        echo "📋 Validating quality configuration..."
+    # Enhanced quality checks validation in pipeline-config.yml
+    if [ -f "$CONFIG_DIR/pipeline-config.yml" ]; then
+        echo "📋 Validating quality configuration in pipeline config..."
         
         # Check if quality_checks section exists
-        if ! cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks' >/dev/null 2>&1; then
-            echo "  ❌ Missing required 'quality_checks' section"
-            exit 1
-        fi
-        
-        # Check if enabled_tools is defined
-        tools_count=$(cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks.enabled_tools | length' 2>/dev/null || echo "0")
-        if [ "$tools_count" = "0" ] || [ "$tools_count" = "null" ]; then
-            echo "  ⚠️  No quality tools enabled"
-        else
-            echo "  ✅ Found $tools_count enabled quality tools"
-        fi
-        
-        # Check if tool_binaries section exists and validate structure
-        if cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks.tool_binaries' >/dev/null 2>&1; then
-            binaries_count=$(cat "$CONFIG_DIR/quality-config.yml" | yq '.quality_checks.tool_binaries | keys | length' 2>/dev/null || echo "0")
-            if [ "$binaries_count" != "0" ] && [ "$binaries_count" != "null" ]; then
-                echo "  ✅ Found $binaries_count tool binary overrides"
+        if cat "$CONFIG_DIR/pipeline-config.yml" | yq '.quality_checks' >/dev/null 2>&1; then
+            # Check if enabled_tools is defined
+            tools_count=$(cat "$CONFIG_DIR/pipeline-config.yml" | yq '.quality_checks.enabled_tools | length' 2>/dev/null || echo "0")
+            if [ "$tools_count" = "0" ] || [ "$tools_count" = "null" ]; then
+                echo "  ⚠️  No quality tools enabled in quality_checks section"
+            else
+                echo "  ✅ Found $tools_count enabled quality tools"
             fi
+            
+            # Check if tool_binaries section exists and validate structure
+            if cat "$CONFIG_DIR/pipeline-config.yml" | yq '.quality_checks.tool_binaries' >/dev/null 2>&1; then
+                binaries_count=$(cat "$CONFIG_DIR/pipeline-config.yml" | yq '.quality_checks.tool_binaries | keys | length' 2>/dev/null || echo "0")
+                if [ "$binaries_count" != "0" ] && [ "$binaries_count" != "null" ]; then
+                    echo "  ✅ Found $binaries_count tool binary overrides"
+                fi
+            fi
+        else
+            echo "  ⚠️  No quality_checks section found in pipeline-config.yml"
         fi
     fi
 else
@@ -89,12 +87,6 @@ fi
 # JSON Schema validation (if ajv-cli is available)
 if command -v npx >/dev/null 2>&1 && [ -f "schemas/quality-config.schema.json" ]; then
     echo "🔍 Validating against JSON schema..."
-    
-    if [ -f "$CONFIG_DIR/quality-config.yml" ]; then
-        TEMP_JSON=$(mktemp --suffix=.json)
-        cat "$CONFIG_DIR/quality-config.yml" | yq . > "$TEMP_JSON"
-        
-        if npx ajv validate -s "schemas/quality-config.schema.json" -d "$TEMP_JSON" 2>/dev/null; then
             echo "  ✅ Schema validation passed"
         else
             echo "  ❌ Schema validation failed"

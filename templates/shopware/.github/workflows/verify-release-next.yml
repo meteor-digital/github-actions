@@ -23,7 +23,7 @@ jobs:
     uses: meteor-digital/github-actions/.github/workflows/verify-release-next.yml@main
     with:
       branch_name: ${{ github.event.inputs.branch_name || 'release/next' }}
-      config_path: ".github/quality-config.yml"
+      config_path: ".github/pipeline-config.yml"
       schedule_timezone: "Europe/Brussels"
     secrets:
       composer_auth: ${{ secrets.COMPOSER_AUTH }}

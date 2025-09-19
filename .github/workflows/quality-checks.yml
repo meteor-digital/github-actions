@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       config_path:
-        description: 'Path to quality configuration file'
+        description: 'Path to pipeline configuration file'
         type: string
-        default: '.github/quality-config.yml'
+        default: '.github/pipeline-config.yml'
       check_changed_files_only:
         description: 'Only check changed files (for fast PR feedback)'
         type: boolean
@@ -29,101 +29,30 @@ jobs:
     name: '🔧 Setup & Dependencies'
     runs-on: ubuntu-latest
     outputs:
-      enabled_tools: ${{ steps.quality_config.outputs.enabled_tools }}
-      project_name: ${{ steps.ci_config.outputs.project_name }}
-      php_cs_fixer_bin: ${{ steps.quality_config.outputs.php_cs_fixer_bin }}
-      psalm_bin: ${{ steps.quality_config.outputs.psalm_bin }}
-      phpstan_bin: ${{ steps.quality_config.outputs.phpstan_bin }}
-      rector_bin: ${{ steps.quality_config.outputs.rector_bin }}
-      phpunit_bin: ${{ steps.quality_config.outputs.phpunit_bin }}
-      phpunuhi_bin: ${{ steps.quality_config.outputs.phpunuhi_bin }}
+      enabled_tools: ${{ steps.pipeline_config.outputs.enabled_tools }}
+      project_name: ${{ steps.pipeline_config.outputs.project_name }}
+      php_cs_fixer_bin: ${{ steps.pipeline_config.outputs.php_cs_fixer_bin }}
+      psalm_bin: ${{ steps.pipeline_config.outputs.psalm_bin }}
+      phpstan_bin: ${{ steps.pipeline_config.outputs.phpstan_bin }}
+      rector_bin: ${{ steps.pipeline_config.outputs.rector_bin }}
+      phpunit_bin: ${{ steps.pipeline_config.outputs.phpunit_bin }}
+      phpunuhi_bin: ${{ steps.pipeline_config.outputs.phpunuhi_bin }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Read CI configuration
-        id: ci_config
+      - name: Parse pipeline configuration
+        id: pipeline_config
         uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
         with:
-          config_file: '.github/pipeline-config.yml'
-
-      - name: Parse quality configuration
-        id: quality_config
-        shell: bash
-        run: |
-          CONFIG_FILE="${{ inputs.config_path }}"
-          
-          # Default enabled tools
-          DEFAULT_TOOLS='["php-cs-fixer", "psalm", "phpstan", "rector", "phpunit", "composer-validate"]'
-          
-          # Default binary paths
-          DEFAULT_PHP_CS_FIXER="./vendor/bin/php-cs-fixer"
-          DEFAULT_PSALM="./vendor/bin/psalm"
-          DEFAULT_PHPSTAN="./vendor/bin/phpstan"
-          DEFAULT_RECTOR="./vendor/bin/rector"
-          DEFAULT_PHPUNIT="./vendor/bin/phpunit"
-          DEFAULT_PHPUNUHI="./vendor/bin/phpunuhi"
-          
-          if [ -f "$CONFIG_FILE" ]; then
-            echo "✅ Quality configuration file found: $CONFIG_FILE"
-            
-            # Parse enabled tools from configuration
-            # Extract and convert YAML array directly to JSON
-            ENABLED_TOOLS=$(yq eval '.quality_checks.enabled_tools | @json' "$CONFIG_FILE" 2>/dev/null)
-            if [ "$ENABLED_TOOLS" = "null" ] || [ -z "$ENABLED_TOOLS" ]; then
-              ENABLED_TOOLS="$DEFAULT_TOOLS"
-            fi
-            
-            # Parse tool binary overrides
-            PHP_CS_FIXER_BIN=$(yq eval '.quality_checks.tool_binaries.php-cs-fixer // ""' "$CONFIG_FILE" 2>/dev/null)
-            PSALM_BIN=$(yq eval '.quality_checks.tool_binaries.psalm // ""' "$CONFIG_FILE" 2>/dev/null)
-            PHPSTAN_BIN=$(yq eval '.quality_checks.tool_binaries.phpstan // ""' "$CONFIG_FILE" 2>/dev/null)
-            RECTOR_BIN=$(yq eval '.quality_checks.tool_binaries.rector // ""' "$CONFIG_FILE" 2>/dev/null)
-            PHPUNIT_BIN=$(yq eval '.quality_checks.tool_binaries.phpunit // ""' "$CONFIG_FILE" 2>/dev/null)
-            PHPUNUHI_BIN=$(yq eval '.quality_checks.tool_binaries.phpunuhi // ""' "$CONFIG_FILE" 2>/dev/null)
-            
-            # Use defaults if not specified
-            [ -z "$PHP_CS_FIXER_BIN" ] && PHP_CS_FIXER_BIN="$DEFAULT_PHP_CS_FIXER"
-            [ -z "$PSALM_BIN" ] && PSALM_BIN="$DEFAULT_PSALM"
-            [ -z "$PHPSTAN_BIN" ] && PHPSTAN_BIN="$DEFAULT_PHPSTAN"
-            [ -z "$RECTOR_BIN" ] && RECTOR_BIN="$DEFAULT_RECTOR"
-            [ -z "$PHPUNIT_BIN" ] && PHPUNIT_BIN="$DEFAULT_PHPUNIT"
-            [ -z "$PHPUNUHI_BIN" ] && PHPUNUHI_BIN="$DEFAULT_PHPUNUHI"
-          else
-            echo "⚠️  Quality configuration file not found: $CONFIG_FILE"
-            echo "💡 Using default enabled tools and binary paths"
-            ENABLED_TOOLS="$DEFAULT_TOOLS"
-            PHP_CS_FIXER_BIN="$DEFAULT_PHP_CS_FIXER"
-            PSALM_BIN="$DEFAULT_PSALM"
-            PHPSTAN_BIN="$DEFAULT_PHPSTAN"
-            RECTOR_BIN="$DEFAULT_RECTOR"
-            PHPUNIT_BIN="$DEFAULT_PHPUNIT"
-            PHPUNUHI_BIN="$DEFAULT_PHPUNUHI"
-          fi
-          
-          echo "enabled_tools=$ENABLED_TOOLS" >> $GITHUB_OUTPUT
-          echo "php_cs_fixer_bin=$PHP_CS_FIXER_BIN" >> $GITHUB_OUTPUT
-          echo "psalm_bin=$PSALM_BIN" >> $GITHUB_OUTPUT
-          echo "phpstan_bin=$PHPSTAN_BIN" >> $GITHUB_OUTPUT
-          echo "rector_bin=$RECTOR_BIN" >> $GITHUB_OUTPUT
-          echo "phpunit_bin=$PHPUNIT_BIN" >> $GITHUB_OUTPUT
-          echo "phpunuhi_bin=$PHPUNUHI_BIN" >> $GITHUB_OUTPUT
-          
-          echo "📊 Enabled quality tools: $ENABLED_TOOLS"
-          echo "🔧 Tool binary paths:"
-          echo "  php-cs-fixer: $PHP_CS_FIXER_BIN"
-          echo "  psalm: $PSALM_BIN"
-          echo "  phpstan: $PHPSTAN_BIN"
-          echo "  rector: $RECTOR_BIN"
-          echo "  phpunit: $PHPUNIT_BIN"
-          echo "  phpunuhi: $PHPUNUHI_BIN"
+          config_file: ${{ inputs.config_path }}
       
       # Run the setup job here, so the cache is generated for the parallel jobs below
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}  
   
@@ -139,7 +68,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -164,9 +93,9 @@ jobs:
           CONFIG_FILE="${{ inputs.config_path }}"
           
           if [ -f "$CONFIG_FILE" ]; then
-            echo "🔧 Running custom quality checks from: $CONFIG_FILE"
+            echo "🔧 Running custom quality checks from pipeline config: $CONFIG_FILE"
             
-            # Parse custom checks from configuration
+            # Parse custom checks from quality_checks section in pipeline configuration
             if command -v yq >/dev/null 2>&1; then
               CUSTOM_CHECKS=$(yq eval '.quality_checks.custom_checks' "$CONFIG_FILE" 2>/dev/null)
               if [ "$CUSTOM_CHECKS" != "null" ] && [ -n "$CUSTOM_CHECKS" ]; then
@@ -176,13 +105,13 @@ jobs:
                   eval "$command"
                 done
               else
-                echo "💡 No custom checks configured"
+                echo "💡 No custom checks configured in quality_checks section"
               fi
             else
               echo "⚠️  yq not available, skipping custom checks parsing"
             fi
           else
-            echo "💡 No quality configuration file found, skipping custom checks"
+            echo "💡 No pipeline configuration file found, skipping custom checks"
           fi
   
   # PHP code quality checks (fast tasks)
@@ -197,7 +126,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -262,7 +191,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -304,7 +233,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -346,7 +275,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -387,7 +316,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       
@@ -429,7 +358,7 @@ jobs:
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
-          config_file: '.github/pipeline-config.yml'
+          config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
       

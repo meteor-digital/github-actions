@@ -6,23 +6,19 @@ This directory contains example configuration files for different project types.
 
 ### Shopware Projects (`shopware/`)
 Complete configuration for Shopware 6 projects, including:
-- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Shopware-specific build commands, shared folders, and console commands
-- **quality-config.yml**: PHPUnuhi validation, Shopware-specific checks
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Shopware-specific build commands, shared folders, console commands, and quality checks (PHPUnuhi validation, Shopware-specific checks)
 
 ### Laravel Projects (`laravel/`)
 Configuration optimized for Laravel applications:
-- **pipeline-config.yml**: Unified CI/CD config with PHP 8.2, Node 20, Laravel optimization commands, shared folders, and Artisan commands
-- **quality-config.yml**: Laravel Pint, Feature/Unit test suites
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.2, Node 20, Laravel optimization commands, shared folders, Artisan commands, and quality checks (Laravel Pint, Feature/Unit test suites)
 
 ### Symfony Projects (`symfony/`)
 Configuration for Symfony applications:
-- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Symfony console commands, shared folders, and Doctrine migrations
-- **quality-config.yml**: Symfony linting, Messenger setup
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Symfony console commands, shared folders, Doctrine migrations, and quality checks (Symfony linting, Messenger setup)
 
 ### Generic Projects (`generic/`)
 Minimal configuration for projects that don't fit specific frameworks:
-- **pipeline-config.yml**: Unified CI/CD config with basic PHP/Node setup, generic build commands, and simple deployment
-- **quality-config.yml**: Standard PHP quality tools
+- **pipeline-config.yml**: Unified CI/CD config with basic PHP/Node setup, generic build commands, simple deployment, and standard PHP quality tools
 
 ## Using Templates
 
@@ -167,7 +163,7 @@ deployment:
 
 ### Additional Quality Checks
 ```yaml
-# quality-config.yml
+# pipeline-config.yml
 quality_checks:
   custom_checks:
     - name: "custom-linter"

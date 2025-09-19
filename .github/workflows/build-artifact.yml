@@ -24,7 +24,7 @@ jobs:
     name: 'Quality checks'
     uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
     with:
-      config_path: '.github/quality-config.yml'
+      config_path: ${{ inputs.config_path }}
       check_changed_files_only: false
       run_slow_testsuites: true
     secrets:

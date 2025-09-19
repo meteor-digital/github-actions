@@ -41,6 +41,22 @@ build:
 artifacts:
   retention_days: 7  # Keep artifacts for 7 days
 
+quality_checks:
+  # Standard quality tools (use their default config files)
+  enabled_tools:
+    - "php-cs-fixer"      # Uses .php-cs-fixer.php
+    - "phpstan"           # Uses phpstan.neon (recommended for Laravel)
+    - "rector"            # Uses rector.php
+    - "phpunit"           # Uses phpunit.xml or phpunit.xml.dist
+    - "composer-validate" # Validates composer.json
+    
+  # Optional: Custom quality checks specific to your project
+  # custom_checks:
+  #   - name: "laravel-pint"
+  #     command: "vendor/bin/pint --test"
+  #   - name: "security-audit"
+  #     command: "composer audit"
+
 notifications:
   notification_webhook: "https://cronos.webhook.office.com/webhookb2/KEY1/IncomingWebhook/KEY2"
 

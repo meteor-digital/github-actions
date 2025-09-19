@@ -111,6 +111,113 @@
       },
       "additionalProperties": false
     },
+    "quality_checks": {
+      "type": "object",
+      "description": "Quality checks and code validation configuration",
+      "properties": {
+        "enabled_tools": {
+          "type": "array",
+          "description": "List of quality tools to enable",
+          "items": {
+            "type": "string",
+            "enum": ["php-cs-fixer", "psalm", "phpstan", "rector", "phpunit", "composer-validate", "phpunuhi"]
+          },
+          "default": ["php-cs-fixer", "psalm", "phpstan", "rector", "phpunit", "composer-validate"],
+          "examples": [
+            ["php-cs-fixer", "phpstan", "rector", "phpunit"],
+            ["php-cs-fixer", "psalm", "rector", "phpunit", "composer-validate", "phpunuhi"]
+          ]
+        },
+        "tool_binaries": {
+          "type": "object",
+          "description": "Override default binary paths for quality tools",
+          "properties": {
+            "php-cs-fixer": {
+              "type": "string",
+              "description": "Path to php-cs-fixer binary",
+              "default": "./vendor/bin/php-cs-fixer",
+              "examples": ["./bin/php-cs-fixer", "./vendor/meteor/shop6-project-conventions/tools/php-cs-fixer"]
+            },
+            "psalm": {
+              "type": "string",
+              "description": "Path to psalm binary",
+              "default": "./vendor/bin/psalm"
+            },
+            "phpstan": {
+              "type": "string",
+              "description": "Path to phpstan binary",
+              "default": "./vendor/bin/phpstan"
+            },
+            "rector": {
+              "type": "string",
+              "description": "Path to rector binary",
+              "default": "./vendor/bin/rector"
+            },
+            "phpunit": {
+              "type": "string",
+              "description": "Path to phpunit binary",
+              "default": "./vendor/bin/phpunit"
+            },
+            "phpunuhi": {
+              "type": "string",
+              "description": "Path to phpunuhi binary",
+              "default": "./vendor/bin/phpunuhi"
+            }
+          },
+          "additionalProperties": false
+        },
+        "test_environment": {
+          "type": "object",
+          "description": "Test environment configuration for quality checks",
+          "properties": {
+            "env_vars": {
+              "type": "array",
+              "description": "Additional environment variables for testing",
+              "items": {
+                "type": "string"
+              },
+              "examples": [
+                ["CUSTOM_API_KEY=\"${secrets.CUSTOM_API_KEY}\""],
+                ["TEST_DATABASE_URL=\"sqlite:///:memory:\""]
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "custom_checks": {
+          "type": "array",
+          "description": "Custom quality checks specific to your project",
+          "items": {
+            "type": "object",
+            "required": ["name", "command"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the custom check"
+              },
+              "command": {
+                "type": "string",
+                "description": "Shell command to execute for the check"
+              }
+            },
+            "additionalProperties": false
+          },
+          "examples": [
+            [
+              {
+                "name": "phpunuhi",
+                "command": "php ./vendor/bin/phpunuhi validate:all"
+              },
+              {
+                "name": "security-audit",
+                "command": "composer audit"
+              }
+            ]
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "notifications": {
       "type": "object",
       "description": "Notification configuration",

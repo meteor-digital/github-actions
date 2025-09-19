@@ -65,7 +65,6 @@ TEMPLATE_DIR="$ACTIONS_REPO_DIR/templates/$PROJECT_TYPE"
 if [ -d "$TEMPLATE_DIR" ]; then
     echo "Copying $PROJECT_TYPE configuration files..."
     cp "$TEMPLATE_DIR/pipeline-config.yml" ".github/"
-    cp "$TEMPLATE_DIR/quality-config.yml" ".github/"
     
     # Copy workflow template files
     echo "Creating workflow files from templates..."
@@ -91,8 +90,7 @@ echo ""
 echo "✅ Setup completed successfully!"
 echo ""
 echo "Configuration files created in .github/ directory:"
-echo "  - pipeline-config.yml"
-echo "  - quality-config.yml"
+echo "  - pipeline-config.yml (unified configuration including quality checks)"
 echo ""
 echo "Workflow files created in .github/workflows/ directory:"
 ls .github/workflows/

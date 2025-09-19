@@ -85,13 +85,11 @@ runs:
         # Required configuration files
         REQUIRED_FILES=(
             "$CONFIG_DIR/pipeline-config.yml"
-            "$CONFIG_DIR/quality-config.yml"
         )
         
         # Schema mappings
         declare -A SCHEMA_MAP=(
             ["$CONFIG_DIR/pipeline-config.yml"]="pipeline-config.schema.json"
-            ["$CONFIG_DIR/quality-config.yml"]="quality-config.schema.json"
         )
         
         MISSING_FILES=()
@@ -265,19 +263,7 @@ runs:
                 fi
             fi
         fi
-        
-        # Validate quality configuration
-        if [ -f "$CONFIG_DIR/quality-config.yml" ]; then
-            echo "  🔍 Validating quality configuration..."
-            
-            if command -v yq >/dev/null 2>&1; then
-                # Check if quality tools are defined
-                tools_count=$(yq eval '.quality_checks.enabled_tools | length' "$CONFIG_DIR/quality-config.yml" 2>/dev/null)
-                if [ "$tools_count" = "0" ] || [ "$tools_count" = "null" ]; then
-                    echo "    ❌ No quality tools enabled"
-                    VALIDATION_ERRORS+=("quality-config.yml: No quality tools enabled")
-                    RESULT="error"
-                else
+
                     echo "    ✅ Found $tools_count enabled quality tool(s)"
                 fi
             fi
