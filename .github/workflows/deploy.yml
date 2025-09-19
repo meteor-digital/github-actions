@@ -147,8 +147,9 @@ jobs:
 
   deploy:
     name: 'Deploy to ${{ needs.setup.outputs.final_environment }}'
-    needs: [setup]
+    needs: [determine-params, setup]
     runs-on: ubuntu-latest
+    if: needs.determine-params.outputs.should_deploy == 'true'
     environment: ${{ needs.setup.outputs.final_environment }}
     
     # Prevent parallel deployments to the same environment
