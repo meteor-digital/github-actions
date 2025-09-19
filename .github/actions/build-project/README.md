@@ -11,13 +11,12 @@ This composite action builds projects using framework-specific commands and conf
 - **Custom Commands**: Supports additional build commands from configuration
 - **File Exclusion**: Removes specified files/patterns from build output
 - **Build Metadata**: Creates comprehensive build-info.json with metadata
-- **Shared Actions**: Uses shared configuration reading and project detection actions
 
 ## Inputs
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `config_file` | Path to CI configuration file | No | `.github/ci-config.yml` |
+| `config_file` | Path to pipeline configuration file | No | `.github/pipeline-config.yml` |
 
 ## Project Type Detection
 
@@ -30,7 +29,7 @@ The action detects project types in the following priority order:
 
 ## Configuration
 
-The action reads build configuration from a YAML file (default: `.github/ci-config.yml`):
+The action reads build configuration from a YAML file (default: `.github/pipeline-config.yml`):
 
 ```yaml
 project:
@@ -92,7 +91,7 @@ The action creates a `build-info.json` file with comprehensive build metadata:
 - name: Build project
   uses: ./actions/build-project
   with:
-    config_file: '.github/ci-config.yml'
+    config_file: '.github/pipeline-config.yml'
 ```
 
 ## File Exclusion

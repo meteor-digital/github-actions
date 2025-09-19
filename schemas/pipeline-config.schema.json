@@ -398,6 +398,11 @@
           "type": "string",
           "description": "Database connection URL (optional, can use environment variables)",
           "examples": ["${DATABASE_URL}", "mysql://user:pass@host:3306/db"]
+        },
+        "ssh_user": {
+          "type": "string",
+          "description": "SSH username for deployment connection",
+          "examples": ["deploy", "www-data", "vd22790"]
         }
       },
       "additionalProperties": false

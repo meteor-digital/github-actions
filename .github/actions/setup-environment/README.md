@@ -11,6 +11,7 @@ This composite action sets up PHP, Node.js, and installs dependencies with cachi
 - ⚙️ **Configuration-Driven**: YAML-based configuration (no fallback defaults)
 - 🔧 **Framework-Specific**: Tailored setup for different project types
 - 🔐 **Authentication**: Supports Composer authentication for private repositories
+- 💾 **Smart Caching**: Early cache restore/save strategy for optimal performance
 
 ## Usage
 
@@ -18,7 +19,7 @@ This composite action sets up PHP, Node.js, and installs dependencies with cachi
 - name: Setup Environment
   uses: ./actions/setup-environment
   with:
-    config_file: '.github/ci-config.yml'           # Optional, defaults to .github/ci-config.yml
+    config_file: '.github/pipeline-config.yml'     # Optional, defaults to .github/pipeline-config.yml
     composer_with_dev: 'yes'                       # Optional, defaults to 'yes'
     composer_auth: '${{ secrets.COMPOSER_AUTH }}'  # Optional, for private repositories
     node_skip_setup: 'false'                       # Optional, defaults to 'false'
@@ -28,7 +29,7 @@ This composite action sets up PHP, Node.js, and installs dependencies with cachi
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `config_file` | Path to CI configuration file | No | `.github/ci-config.yml` |
+| `config_file` | Path to pipeline configuration file | No | `.github/pipeline-config.yml` |
 | `composer_with_dev` | Install dev dependencies (yes/no) | No | `yes` |
 | `composer_auth` | Composer authentication JSON | No | `{}` |
 | `node_skip_setup` | Whether to skip Node.js setup | No | `false` |
@@ -44,9 +45,10 @@ This composite action sets up PHP, Node.js, and installs dependencies with cachi
 
 ## Configuration File Format
 
-The action reads configuration from a YAML file with the following structure:
+The action reads configuration from the unified pipeline configuration file:
 
 ```yaml
+# .github/pipeline-config.yml
 project:
   name: "my-project"
   
@@ -55,68 +57,103 @@ runtime:
   node_version: "18"
   php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
   
-build:
-  exclude_patterns: |
-    *.git*
-    node_modules/*
-    tests/*
-  build_commands:
-    - "npm run build"
-    - "composer install --no-dev"
-  
-artifacts:
-  retention_days: 7
-  naming_pattern: "{environment}-build-{version}"
+# Other sections (build, quality_checks, deployment, etc.) are ignored by this action
 ```
+
+### Required Configuration Fields
+
+- `runtime.php_version`: PHP version (e.g., "8.1", "8.2", "8.3")
+- `runtime.node_version`: Node.js version (e.g., "16", "18", "20")
+- `runtime.php_extensions`: Comma-separated list of PHP extensions (optional, has sensible defaults)
 
 ## Project Type Auto-Detection
 
-The action automatically detects project types based on file presence:
+The action uses the `detect-project-type` action to automatically detect project types based on file presence:
 
 1. **Shopware**: `shopware-project.yml` exists
 2. **Laravel**: `artisan` file exists  
 3. **Symfony**: `symfony.lock` exists
-4. **Default**: Shopware (for backward compatibility)
+4. **Generic**: Default fallback for other project types
 
-## Configuration Requirements
+The detected project type is used for framework-specific environment validation and setup.
 
-### Required Configuration
-All projects must specify:
-- `runtime.php_version`: PHP version (e.g., "8.1", "8.2")
-- `runtime.node_version`: Node.js version (e.g., "18", "20")
-- `runtime.php_extensions`: PHP extensions (e.g., "mbstring, intl, gd, xml, zip, curl, opcache")
+## Implementation Details
+
+### Dependency Installation Strategy
+
+The action uses a sophisticated caching and installation strategy:
+
+1. **Cache Key Generation**: Creates cache keys based on `composer.json`, `composer.lock`, `package.json`, and `package-lock.json` hashes
+2. **Early Cache Restore**: Uses `actions/cache/restore@v4` to restore dependencies before installation
+3. **Conditional Installation**: Only installs dependencies if cache miss occurs
+4. **Composer Setup**: Uses the dedicated `composer-setup` action for Composer dependency installation
+5. **Cache Save**: Saves cache after successful installation for future runs
+
+### PHP Extensions
+
+Default PHP extensions are provided by the `parse-pipeline-config` action. You can override them in your configuration:
+
+```yaml
+runtime:
+  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql, pdo_mysql"
+```
 
 ## Caching Strategy
 
-The action implements intelligent caching for optimal performance:
+The action implements a sophisticated caching strategy for optimal performance:
 
-### Early Cache Strategy
-- **Combined Cache**: Single cache for vendor, node_modules, ~/.composer/cache, ~/.npm
-- **Early Restore**: Uses `actions/cache/restore@v4` to make cache available immediately
-- **Early Save**: Uses `actions/cache/save@v4` after installation
-- **Benefit**: Dependencies available to subsequent tools (like Shopware CLI) in the same job
+### Dependency Cache
+- **Combined Cache**: Single cache for `vendor/`, `node_modules/`, `~/.composer/cache/`, `~/.npm/`
+- **Smart Key Generation**: Cache keys based on dependency file hashes and dev/production mode
+- **Early Restore**: Uses `actions/cache/restore@v4` to make dependencies available immediately
+- **Conditional Save**: Only saves cache after successful installation on cache miss
+- **Development Mode Support**: Separate cache keys for dev vs production dependencies
 
-### NPM Cache
-- **Built-in**: Uses `actions/setup-node@v4` built-in caching
-- **Lock Files**: Supports `package-lock.json` and `npm-shrinkwrap.json`
-- **Strategy**: Prefers `npm ci` for reproducible builds when lock files exist
+### Node.js Cache
+- **Built-in Caching**: Uses `actions/setup-node@v4` built-in NPM caching
+- **Lock File Support**: Automatically detects and uses `package-lock.json`
+- **Global Cache**: Caches `~/.npm` directory for faster subsequent installs
+
+### Cache Key Format
+```
+deps-{composer-hash}-{node-hash}[-nodev]
+```
+- `composer-hash`: Hash of `composer.json` and `composer.lock`
+- `node-hash`: Hash of `package.json` and `package-lock.json`
+- `-nodev`: Suffix added when `composer_with_dev` is "no"
+
+## Framework-Specific Setup
+
+After installing dependencies, the action performs framework-specific validation:
+
+### Shopware Projects
+- Verifies `shopware-project.yml` exists
+- Checks for required directories: `config/`, `public/`, `src/`
+- Prepares environment for Shopware CLI usage (installed by build-project action)
+
+### Laravel Projects  
+- Verifies `artisan` file exists
+- Checks for required directories: `app/`, `config/`, `resources/`
+- Validates Laravel project structure
+
+### Symfony Projects
+- Verifies `symfony.lock` file exists
+- Checks for required directories: `src/`, `config/`
+- Validates `bin/console` exists
+
+### Generic Projects
+- Performs basic validation only
+- No framework-specific requirements
 
 ## Error Handling
 
 The action includes comprehensive error handling:
 
-- **Configuration Validation**: Fails fast if required configuration is missing
-- **Clear Error Messages**: Provides helpful guidance when configuration is invalid
-- **Dependency Validation**: Validates `composer.json` before installation
-- **Clear Logging**: Provides detailed output for debugging
-- **Graceful Skipping**: Skips installation if dependency files don't exist
-
-## YAML Parsing
-
-The action supports two parsing methods:
-
-1. **yq** (preferred): If `yq` is available, uses it for robust YAML parsing
-2. **grep/sed** (fallback): Uses shell tools for basic YAML parsing when `yq` is unavailable
+- **Configuration Validation**: Uses `parse-pipeline-config` action for robust configuration parsing
+- **Dependency Validation**: Handled by the `composer-setup` action
+- **Clear Logging**: Provides detailed output with emojis for easy scanning
+- **Graceful Degradation**: Continues with warnings for non-critical issues
+- **Framework Validation**: Warns about missing expected files/directories
 
 ## Examples
 
@@ -131,7 +168,7 @@ The action supports two parsing methods:
 - name: Setup Environment
   uses: ./actions/setup-environment
   with:
-    config_file: 'custom/ci-config.yml'
+    config_file: 'custom/pipeline-config.yml'
     composer_with_dev: 'no'
     composer_auth: '${{ secrets.COMPOSER_AUTH }}'
 ```
@@ -148,7 +185,7 @@ The action supports two parsing methods:
 ```yaml
 - name: Setup Environment
   id: setup
-  uses: ./actions/setup-environment
+  uses: meteor-digital/github-actions/.github/actions/setup-environment@main
 
 - name: Display Setup Info
   run: |
@@ -163,16 +200,49 @@ The action supports two parsing methods:
     fi
 ```
 
+### Complete Workflow Example
+```yaml
+name: Build Project
+
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Environment
+        id: setup
+        uses: meteor-digital/github-actions/.github/actions/setup-environment@main
+        with:
+          config_file: '.github/pipeline-config.yml'
+          composer_with_dev: 'no'
+          composer_auth: '${{ secrets.COMPOSER_AUTH }}'
+          
+      - name: Build project
+        run: |
+          echo "Building ${{ steps.setup.outputs.project_type }} project..."
+          # Build commands here
+```
+
+## Dependencies
+
+This action depends on several other actions:
+- `meteor-digital/github-actions/.github/actions/detect-project-type@main`
+- `meteor-digital/github-actions/.github/actions/parse-pipeline-config@main`
+- `meteor-digital/github-actions/.github/actions/composer-setup@main`
+- `shivammathur/setup-php@v2`
+- `actions/setup-node@v4`
+- `actions/cache/restore@v4` and `actions/cache/save@v4`
+
 ## Requirements
 
 - GitHub Actions runner with bash support
 - Internet access for downloading PHP, Node.js, and dependencies
-- Valid `composer.json` (if using Composer)
-- Valid `package.json` (if using NPM)
-
-## Compatibility
-
-- ✅ **Operating Systems**: Linux, macOS, Windows
-- ✅ **PHP Versions**: 7.4+ (configurable)
-- ✅ **Node.js Versions**: 14+ (configurable)
-- ✅ **Project Types**: Shopware, Laravel, Symfony, Generic
+- Valid `pipeline-config.yml` with required runtime configuration
+- Valid `composer.json` (if project uses Composer)
+- Valid `package.json` (if project uses NPM)

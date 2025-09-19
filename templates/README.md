@@ -6,15 +6,16 @@ This directory contains example configuration files for different project types.
 
 ### Shopware Projects (`shopware/`)
 Complete configuration for Shopware 6 projects, including:
-- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Shopware-specific build commands, shared folders, console commands, and quality checks (PHPUnuhi validation, Shopware-specific checks)
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Shopware-specific quality checks (PHPUnuhi validation), deployment settings for Level27 hosting, and framework-specific defaults for shared folders and console commands
+- **Workflow templates**: Example GitHub Actions workflows for build, deploy, PR checks, and release validation
 
 ### Laravel Projects (`laravel/`)
 Configuration optimized for Laravel applications:
-- **pipeline-config.yml**: Unified CI/CD config with PHP 8.2, Node 20, Laravel optimization commands, shared folders, Artisan commands, and quality checks (Laravel Pint, Feature/Unit test suites)
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.2, Node 20, Laravel-specific build commands (Artisan optimization), shared folders (storage, bootstrap/cache), and quality checks
 
 ### Symfony Projects (`symfony/`)
 Configuration for Symfony applications:
-- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Symfony console commands, shared folders, Doctrine migrations, and quality checks (Symfony linting, Messenger setup)
+- **pipeline-config.yml**: Unified CI/CD config with PHP 8.1, Node 18, Symfony console commands, Doctrine migrations, and framework-specific deployment settings
 
 ### Generic Projects (`generic/`)
 Minimal configuration for projects that don't fit specific frameworks:
@@ -62,13 +63,19 @@ cp templates/generic/*.yml .github/
 ```
 
 ### 2. Customize Configuration
-Edit the copied files to match your project:
+Edit the `pipeline-config.yml` file to match your project:
 
 - Update `project.name` with your actual project name
-- Configure environment hosts and paths using GitHub secrets
+- Configure environment hosts and paths (use placeholder values that reference GitHub secrets)
 - Adjust PHP/Node versions as needed
 - Add or remove quality tools based on your setup
 - Customize build commands and shared folders
+- Override tool binary paths if your project has custom tool locations:
+  ```yaml
+  quality_checks:
+    tool_binaries:
+      php-cs-fixer: "./bin/php-cs-fixer"  # Custom binary location
+  ```
 
 ### 3. Set Up GitHub Secrets
 Configure the required secrets in your GitHub repository:
@@ -85,10 +92,6 @@ Configure the required secrets in your GitHub repository:
 - `SSH_USER`: SSH username for deployment
 - `DATABASE`: Database name
 - `MESSENGER_WORKER_ID`: Messenger worker ID (for Shopware/Symfony projects)
-
-#### Optional for Notifications
-- `TEAMS_WEBHOOK`: Microsoft Teams webhook URL
-- `SLACK_WEBHOOK`: Slack webhook URL
 
 ### 4. Create Workflow Files
 Create workflow files in `.github/workflows/` that reference the reusable workflows:
@@ -140,67 +143,9 @@ jobs:
 - **Deployment**: Minimal shared folders and commands
 - **Quality**: Standard PHP quality tools only
 
-## Customization Examples
-
-### Adding Custom Build Commands
-```yaml
-# pipeline-config.yml
-build:
-  build_commands:
-    - "npm run build"
-    - "composer install --no-dev --optimize-autoloader"
-    - "php bin/custom-build-script.php"  # Custom command
-```
-
-### Custom Shared Folders
-```yaml
-# pipeline-config.yml
-deployment:
-  shared_folders:
-    - "custom/uploads"      # Add to framework defaults
-    - "public/generated"    # Custom shared folder
-```
-
-### Additional Quality Checks
-```yaml
-# pipeline-config.yml
-quality_checks:
-  custom_checks:
-    - name: "custom-linter"
-      command: "vendor/bin/custom-linter src/"
-      continue_on_error: false
-```
-
-### Multiple Environments
-```yaml
-# pipeline-config.yml
-deployment:
-  environments:
-  dev:
-    auto_deploy: true
-    branches: ["develop"]
-    host: "${DEV_HOST}"
-    path: "${DEV_PATH}"
-  test:
-    auto_deploy: true
-    branches: ["test/*"]
-    host: "${TEST_HOST}"
-    path: "${TEST_PATH}"
-  staging:
-    auto_deploy: true
-    branches: ["staging"]
-    host: "${STAGING_HOST}"
-    path: "${STAGING_PATH}"
-  prod:
-    auto_deploy: false
-    triggers: ["tag"]
-    host: "${PROD_HOST}"
-    path: "${PROD_PATH}"
-```
-
 ## Validation
 
-All template files are validated against their respective JSON schemas. You can validate your customized files using:
+All template files are validated against the unified pipeline configuration JSON schema. You can validate your customized files using:
 
 ```bash
 # Using the validation script
@@ -210,9 +155,9 @@ All template files are validated against their respective JSON schemas. You can 
 ajv validate -s schemas/pipeline-config.schema.json -d .github/pipeline-config.yml
 ```
 
-## Getting Help
-
-- Check the [Configuration Guide](../docs/configuration.md) for detailed explanations
-- Review the [JSON Schemas](../schemas/) for validation rules
-- See the [Project Structure Guide](../docs/project-structure.md) for workflow setup
-- Open an issue for questions or problems
+The schema validates:
+- Required fields (project.name, runtime.php_version)
+- Valid hosting provider values
+- Proper environment configuration structure
+- Quality tool names and binary path formats
+- Notification webhook URL formats

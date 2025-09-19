@@ -62,7 +62,7 @@ The action automatically applies framework-specific defaults based on project ty
 
 ### Project Configuration
 
-Create a `.github/deployment-config.yml` file with only the settings you need to customize:
+Create a `.github/pipeline-config.yml` file with your deployment configuration:
 
 ```yaml
 # Only specify what differs from framework defaults

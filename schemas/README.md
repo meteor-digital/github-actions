@@ -16,13 +16,6 @@ Defines the schema for `.github/pipeline-config.yml` files, including:
   - Hosting provider configuration
   - Deployment settings (shared folders, commands, cleanup)
 
-### quality-config.schema.json
-Defines the schema for `.github/quality-config.yml` files, including:
-- Quality tool configuration
-- Custom check definitions
-- Test suite settings
-- Notification configuration
-
 ## Using the Schemas
 
 ### IDE Integration

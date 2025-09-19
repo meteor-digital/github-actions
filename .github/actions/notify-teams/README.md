@@ -1,6 +1,6 @@
 # Notify Teams Action
 
-Simple action to send messages to Teams/Slack channels.
+Simple action to send messages to Teams channels.
 
 ## Usage
 
@@ -88,8 +88,8 @@ Since this action just sends whatever message you provide, you compose the messa
 - name: Get project name
   id: project
   run: |
-    if [ -f ".github/ci-config.yml" ]; then
-      PROJECT_NAME=$(yq eval '.project.name' .github/ci-config.yml 2>/dev/null || echo "${{ github.event.repository.name }}")
+    if [ -f ".github/pipeline-config.yml" ]; then
+      PROJECT_NAME=$(yq eval '.project.name' .github/pipeline-config.yml 2>/dev/null || echo "${{ github.event.repository.name }}")
     else
       PROJECT_NAME="${{ github.event.repository.name }}"
     fi
