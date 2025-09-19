@@ -3,7 +3,7 @@ description: 'Sends a message to Teams/Slack channels'
 
 inputs:
   webhook_url:
-    description: 'Teams/Slack webhook URL'
+    description: 'Teams webhook URL'
     required: true
   message:
     description: 'Message content to send'
@@ -21,11 +21,43 @@ runs:
   using: 'composite'
   steps:
     - name: Send Teams notification
-      uses: jdcargile/ms-teams-notification@v1.4
-      with:
-        github-token: ${{ github.token }}
-        ms-teams-webhook-uri: ${{ inputs.webhook_url }}
-        notification-summary: ${{ inputs.message }}
-        notification-color: ${{ inputs.color }}
-        timezone: ${{ inputs.timezone }}
-        verbose-logging: false
+      shell: bash
+      run: |
+        set -euo pipefail
+        WEBHOOK_URL='${{ inputs.webhook_url }}'
+        COLOR='${{ inputs.color }}'
+        MESSAGE='${{ inputs.message }}'
+
+        # First line becomes the title/summary; full message becomes body text
+        TITLE=$(printf "%s" "$MESSAGE" | sed -n '1p')
+        BODY_MD="$MESSAGE"
+
+        RUN_URL='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
+        # Build MessageCard payload. Teams expects hex color without leading '#'.
+        jq -n \
+          --arg color "$COLOR" \
+          --arg summary "$TITLE" \
+          --arg title "$TITLE" \
+          --arg text "$BODY_MD" \
+          --arg runUrl "$RUN_URL" \
+          '{
+            "@type": "MessageCard",
+            "@context": "https://schema.org/extensions",
+            "themeColor": $color,
+            "summary": $summary,
+            "title": $title,
+            "text": $text,
+            "potentialAction": [
+              {
+                "@type": "OpenUri",
+                "name": "View Workflow Run",
+                "targets": [ { "os": "default", "uri": $runUrl } ]
+              }
+            ]
+          }' > payload.json
+
+        curl -sS -X POST \
+          -H 'Content-Type: application/json' \
+          -d @payload.json \
+          "$WEBHOOK_URL"
