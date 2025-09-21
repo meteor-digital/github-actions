@@ -32,6 +32,15 @@ runs:
       with:
         fetch-depth: 0  # Needed for changed-files detection
 
+    - name: '📥 Checkout schemas'
+      uses: actions/checkout@v4
+      with:
+        repository: meteor-digital/github-actions
+        path: .github-actions-schemas
+        sparse-checkout: |
+          schemas/
+        sparse-checkout-cone-mode: false
+
     - name: '🔍 Check for configuration file changes'
       id: check-changes
       if: inputs.check_changed_only == 'true'
@@ -153,9 +162,8 @@ runs:
             echo "🔍 Validating against JSON schemas..."
             
             if command -v ajv >/dev/null 2>&1; then
-                # Get schema directory (relative to this action)
-                ACTION_DIR="$(dirname "${BASH_SOURCE[0]}")"
-                SCHEMA_DIR="$ACTION_DIR/../../schemas"
+                # Get schema directory from checked-out schemas
+                SCHEMA_DIR=".github-actions-schemas/schemas"
                 
                 for file in "${REQUIRED_FILES[@]}"; do
                     if [ -f "$file" ]; then
@@ -167,15 +175,14 @@ runs:
                                 echo "  ✅ $file - Valid against schema"
                             else
                                 echo "  ❌ $file - Schema validation failed"
-                                # Get detailed error message
                                 error_msg=$(ajv validate -s "$schema_path" -d "$file" 2>&1 | head -5)
                                 VALIDATION_ERRORS+=("$file: Schema validation failed - $error_msg")
                                 RESULT="error"
                             fi
                         else
-                            echo "  ⚠️  $file - Schema not found at $schema_path"
+                            echo "  ❌ $file - Schema not found at $schema_path"
                             VALIDATION_ERRORS+=("$file: Schema file not found")
-                            RESULT="warning"
+                            RESULT="error"
                         fi
                     fi
                 done
@@ -260,11 +267,6 @@ runs:
                             RESULT="error"
                             ;;
                     esac
-                fi
-            fi
-        fi
-
-                    echo "    ✅ Found $tools_count enabled quality tool(s)"
                 fi
             fi
         fi

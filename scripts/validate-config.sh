@@ -85,17 +85,24 @@ else
 fi
 
 # JSON Schema validation (if ajv-cli is available)
-if command -v npx >/dev/null 2>&1 && [ -f "schemas/quality-config.schema.json" ]; then
+if command -v npx >/dev/null 2>&1 && [ -f "schemas/pipeline-config.schema.json" ]; then
     echo "🔍 Validating against JSON schema..."
+    
+    # Convert YAML to JSON for schema validation
+    TEMP_JSON=$(mktemp)
+    if cat "$CONFIG_DIR/pipeline-config.yml" | yq -c . | tr -d '\n' > "$TEMP_JSON" 2>/dev/null; then
+        if ajv validate -s schemas/pipeline-config.schema.json -d "$TEMP_JSON" >/dev/null 2>&1; then
             echo "  ✅ Schema validation passed"
         else
             echo "  ❌ Schema validation failed"
-            echo "  Run with details: npx ajv validate -s schemas/quality-config.schema.json -d <json-file>"
+            echo "  Run with details: ajv validate -s schemas/pipeline-config.schema.json -d <json-file>"
         fi
         
         rm -f "$TEMP_JSON"
+    else
+        echo "  ❌ Failed to convert YAML to JSON for schema validation"
     fi
-elif [ ! -f "schemas/quality-config.schema.json" ]; then
+elif [ ! -f "schemas/pipeline-config.schema.json" ]; then
     echo "⚠️  Schema file not found - skipping JSON schema validation"
 else
     echo "⚠️  ajv-cli not found - skipping JSON schema validation"
