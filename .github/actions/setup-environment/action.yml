@@ -95,7 +95,7 @@ runs:
         coverage: none
 
     - name: '🟢 Setup Node.js ${{ steps.config.outputs.node_version }}'
-      if: inputs.node_skip_setup != 'true'
+      if: inputs.node_skip_setup != 'true' && hashFiles('package.json') != ''
       uses: actions/setup-node@v4
       with:
         node-version: ${{ steps.config.outputs.node_version }}
