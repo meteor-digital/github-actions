@@ -148,9 +148,6 @@ jobs:
 All template files are validated against the unified pipeline configuration JSON schema. You can validate your customized files using:
 
 ```bash
-# Using the validation script
-./scripts/validate-config.sh .github
-
 # Using ajv-cli (if installed)
 ajv validate -s schemas/pipeline-config.schema.json -d .github/pipeline-config.yml
 ```
@@ -158,6 +155,5 @@ ajv validate -s schemas/pipeline-config.schema.json -d .github/pipeline-config.y
 The schema validates:
 - Required fields (project.name, runtime.php_version)
 - Valid hosting provider values
-- Proper environment configuration structure
 - Quality tool names and binary path formats
 - Notification webhook URL formats

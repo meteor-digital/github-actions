@@ -36,8 +36,8 @@ npm install -g ajv-cli
 ajv validate -s pipeline-config.schema.json -d .github/pipeline-config.yml
 ```
 
-### GitHub Actions Validation
-The workflows automatically validate configuration files when they change in pull requests.
+### CI/CD Integration
+You can integrate schema validation into your CI/CD pipelines using ajv-cli or similar tools.
 
 
 

@@ -88,6 +88,5 @@ All composite actions are located in [`.github/actions/`](.github/actions/). The
 - **[parse-pipeline-config](.github/actions/parse-pipeline-config/)** - Parses unified pipeline configuration
 - **[detect-project-type](.github/actions/detect-project-type/)** - Auto-detects project framework type
 - **[determine-artifact-name](.github/actions/determine-artifact-name/)** - Determines artifact names based on Git references
-- **[validate-config](.github/actions/validate-config/)** - Validates configuration files against schemas
 
 For a complete list of all actions, see the [`.github/actions/`](.github/actions/) directory. Each action includes its own README with detailed documentation.

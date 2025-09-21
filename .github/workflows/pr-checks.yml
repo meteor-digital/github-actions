@@ -18,18 +18,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate-config:
-    name: 'Validate configuration'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate configuration files
-        uses: meteor-digital/github-actions/.github/actions/validate-config@main
-        with:
-          config_directory: '.github'
-          fail_on_missing: false  # Don't fail on missing files in PR checks
-          validate_schemas: true
-          check_changed_only: true  # Only validate changed files in PR context
-
   quality-checks:
     name: 'Quality checks'
     uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
