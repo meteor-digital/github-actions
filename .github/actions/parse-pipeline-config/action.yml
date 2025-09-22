@@ -159,7 +159,7 @@ runs:
         PROJECT_NAME="${{ github.event.repository.name }}"
         NODE_VERSION="18"
         PHP_EXTENSIONS="mbstring, intl, gd, xml, zip, curl, opcache"
-        RETENTION_DAYS="7"
+        RETENTION_DAYS="1"
         EXCLUDE_PATTERNS="*.git*
         node_modules/*
         tests/*

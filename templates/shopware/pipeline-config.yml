@@ -67,8 +67,8 @@ build:
     # - "composer install --no-dev --optimize-autoloader"
 
   # Build artifact configuration
-  artifacts:
-    retention_days: 7
+  # artifacts:
+  #   retention_days: 1
 
 deployment:
   environments:

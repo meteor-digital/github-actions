@@ -31,8 +31,8 @@ build:
     - "composer install --no-dev --optimize-autoloader"
   
   # Build artifact configuration
-  artifacts:
-    retention_days: 7  # Keep artifacts for 7 days
+  # artifacts:
+  #   retention_days: 1  # Keep artifacts for 1 days
 
 quality_checks:
   # Standard quality tools (use their default config files)

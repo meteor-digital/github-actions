@@ -125,7 +125,7 @@ build:
 
   # Build artifact configuration
   artifacts:
-    retention_days: 7
+    retention_days: 1
 
 notifications:
   notification_webhook: "https://hooks.example.com/webhook"
