@@ -166,12 +166,20 @@ jobs:
           echo "🎨 Running PHP-CS-Fixer..."
           echo "  📄 Using binary: ${{ needs.setup.outputs.php_cs_fixer_bin }}"
           
+          # Determine config file
+          CONFIG_FILE=""
+          if [ -f ".php-cs-fixer.php" ]; then
+            CONFIG_FILE=".php-cs-fixer.php"
+          elif [ -f ".php-cs-fixer.dist.php" ]; then
+            CONFIG_FILE=".php-cs-fixer.dist.php"
+          fi
+
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  🎯 Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation --config "$CONFIG_FILE" ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  📁 Checking all files"
-            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation
+            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation --config "$CONFIG_FILE"
           fi
           
           echo "✅ PHP-CS-Fixer completed successfully"
