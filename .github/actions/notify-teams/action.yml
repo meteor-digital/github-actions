@@ -43,7 +43,7 @@ runs:
 
         RUN_URL='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
-        # Build MessageCard payload. Teams expects hex color without leading '#'.
+        # Build payload matching the working Teams webhook format
         jq -n \
           --arg color "$COLOR" \
           --arg summary "${{ github.repository }}" \
@@ -51,17 +51,45 @@ runs:
           --arg text "$BODY_MD" \
           --arg runUrl "$RUN_URL" \
           '{
-            "@type": "MessageCard",
-            "@context": "https://schema.org/extensions",
-            "themeColor": $color,
-            "summary": $summary,
-            "title": $title,
-            "text": $text,
-            "potentialAction": [
+            "type": "message",
+            "attachments": [
               {
-                "@type": "OpenUri",
-                "name": "View Workflow Run",
-                "targets": [ { "os": "default", "uri": $runUrl } ]
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                  "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+                  "type": "AdaptiveCard",
+                  "version": "1.0",
+                  "body": [
+                    {
+                      "type": "TextBlock",
+                      "wrap": true,
+                      "style": "heading",
+                      "text": $title,
+                      "weight": "bolder",
+                      "size": "large",
+                      "color": "default"
+                    },
+                    {
+                      "type": "TextBlock",
+                      "text": $text,
+                      "wrap": true
+                    },
+                    {
+                      "type": "FactSet",
+                      "facts": [
+                        {
+                          "title": "Repository",
+                          "value": $summary
+                        },
+                        {
+                          "title": "Workflow Run",
+                          "value": ("[View Details](" + $runUrl + ")")
+                        }
+                      ]
+                    }
+                  ],
+                  "summary": $title
+                }
               }
             ]
           }' > payload.json
