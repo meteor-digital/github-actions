@@ -90,3 +90,24 @@ All composite actions are located in [`.github/actions/`](.github/actions/). The
 - **[determine-artifact-name](.github/actions/determine-artifact-name/)** - Determines artifact names based on Git references
 
 For a complete list of all actions, see the [`.github/actions/`](.github/actions/) directory. Each action includes its own README with detailed documentation.
+
+## Migrating from Jenkins
+
+This repository provides a script to automate the migration from a legacy Jenkins setup to the `pipeline-config.yml` used by these GitHub Actions. The `scripts/migrate-jenkins-config.sh` script extracts settings from `Jenkinsfile-project-*` files, auto-detects quality tools, and generates a new `.github/pipeline-config.yml`.
+
+**Usage:**
+
+Run the script from your checkout of the `generic-ci-cd-workflows` repository. The script can be pointed at your project in two ways:
+
+1.  **Provide the project path as an argument:**
+    ```bash
+    /path/to/generic-ci-cd-workflows/scripts/migrate-jenkins-config.sh /path/to/your-project
+    ```
+
+2.  **Run the command from within your project's directory:**
+    ```bash
+    cd /path/to/your-project
+    /path/to/generic-ci-cd-workflows/scripts/migrate-jenkins-config.sh
+    ```
+
+After running, review and adjust the generated `pipeline-config.yml` before committing.
