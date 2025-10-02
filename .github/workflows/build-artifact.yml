@@ -115,7 +115,6 @@ jobs:
             
             **📋 Details:**
             - **Artifact:** `${{ steps.determine_artifact_name.outputs.artifact_name }}`
-            - **Branch/Tag:** ${{ github.ref_name }}
             - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
       - name: Send failure notification
@@ -130,5 +129,4 @@ jobs:
             ---
             
             **📋 Details:**
-            - **Branch/Tag:** ${{ github.ref_name }}
             - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
