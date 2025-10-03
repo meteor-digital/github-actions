@@ -31,6 +31,7 @@ jobs:
     outputs:
       enabled_tools: ${{ steps.pipeline_config.outputs.enabled_tools }}
       project_name: ${{ steps.pipeline_config.outputs.project_name }}
+      project_type: ${{ steps.setup_env.outputs.project_type }}
       php_cs_fixer_bin: ${{ steps.pipeline_config.outputs.php_cs_fixer_bin }}
       psalm_bin: ${{ steps.pipeline_config.outputs.psalm_bin }}
       phpstan_bin: ${{ steps.pipeline_config.outputs.phpstan_bin }}
@@ -50,6 +51,7 @@ jobs:
       
       # Run the setup job here, so the cache is generated for the parallel jobs below
       - name: Setup environment
+        id: setup_env
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
@@ -374,8 +376,25 @@ jobs:
         shell: bash
         run: |
           echo "🔧 Configuring test environment..."
-          echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
-          
+
+          # Run Shopware-specific configuration if it's a Shopware project
+          if [ "${{ needs.setup.outputs.project_type }}" == "shopware" ]; then
+            echo "  -> Shopware project detected. Applying Shopware-specific configuration."
+            
+            # Get Shopware version
+            SW_VERSION=$(composer show shopware/core | grep '^versions' | awk '{print $NF}' | sed 's/v//' | tr -d '[:space:]')
+            echo "    -> Found Shopware version: $SW_VERSION"
+
+            # Handle DATABASE_URL based on version
+            if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
+              echo "    -> Using DATABASE_URL without '_test' suffix for older Shopware version."
+              echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware' >> .env.test.local
+            else
+              echo "    -> Using DATABASE_URL with '_test' suffix."
+              echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
+            fi
+          fi
+
           # Add additional test environment variables
           if [ -n "${{ secrets.test_env_vars }}" ]; then
             echo "🔐 Adding test environment variables from secret..."
@@ -385,7 +404,7 @@ jobs:
           else
             echo "💡 No additional test environment variables provided"
           fi
-          
+
       - name: Run integration tests
         shell: bash
         run: |
