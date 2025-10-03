@@ -393,6 +393,14 @@ jobs:
               echo "    -> Using DATABASE_URL with '_test' suffix."
               echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
             fi
+
+            # Handle JWT key generation for Shopware < 6.7
+            if [[ $(printf "%s\n" "6.7.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.7.0.0" ]]; then
+              echo "    -> Generating JWT keys for older Shopware version using Shopware CLI."
+              php bin/console system:generate-jwt-secret --force
+            else
+              echo "    -> Skipping JWT key generation for Shopware $SW_VERSION."
+            fi
           fi
 
           # Add additional test environment variables
