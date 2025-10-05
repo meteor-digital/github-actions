@@ -45,6 +45,12 @@ jobs:
         with:
           config_file: ${{ inputs.config_path }}
 
+      - name: Detect project type
+        id: detect_type
+        uses: meteor-digital/github-actions/.github/actions/detect-project-type@main
+        with:
+          config_file: ${{ inputs.config_path }}
+
       - name: Determine artifact name
         id: determine_artifact_name
         uses: meteor-digital/github-actions/.github/actions/determine-artifact-name@main
@@ -59,6 +65,8 @@ jobs:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: ${{ inputs.build_type == 'development' && 'yes' || 'no' }}
           composer_auth: ${{ secrets.composer_auth }}
+          # Force Node.js setup for Shopware admin builds (even without package.json)
+          node_skip_setup: ${{ steps.detect_type.outputs.type == 'shopware' && 'false' || 'true' }}
           
       - name: Build project
         uses: meteor-digital/github-actions/.github/actions/build-project@main

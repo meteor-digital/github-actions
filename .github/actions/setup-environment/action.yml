@@ -95,11 +95,11 @@ runs:
         coverage: none
 
     - name: '🟢 Setup Node.js ${{ steps.config.outputs.node_version }}'
-      if: inputs.node_skip_setup != 'true' && hashFiles('package.json') != ''
+      if: inputs.node_skip_setup == 'false' || (inputs.node_skip_setup != 'true' && hashFiles('package.json') != '')
       uses: actions/setup-node@v4
       with:
         node-version: ${{ steps.config.outputs.node_version }}
-        cache: 'npm'
+        cache: ${{ hashFiles('package.json') != '' && 'npm' || '' }}
 
     - name: '📥 Install dependencies'
       if: steps.cache-deps.outputs.cache-hit != 'true'
