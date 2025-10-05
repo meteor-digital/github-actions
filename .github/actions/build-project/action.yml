@@ -23,6 +23,24 @@ runs:
     - name: '🛍️ Install Shopware CLI'
       if: steps.project-type.outputs.type == 'shopware'
       uses: shopware/shopware-cli-action@v2
+    
+    - name: '🛍️ Prepare Shopware environment'
+      if: steps.project-type.outputs.type == 'shopware'
+      shell: bash
+      run: |
+        #!/bin/bash
+        set -euo pipefail
+        
+        echo "🔧 Preparing Shopware environment for build..."
+        
+        # Create minimal .env file if it doesn't exist (required for asset building)
+        if [ ! -f .env ]; then
+          if [ -f .env.dist ]; then
+            echo "📝 Creating .env from .env.dist template"
+            cp .env.dist .env
+          fi
+          echo "✅ Environment file created"
+        fi
         
     - name: '🛍️ Build Shopware project'
       if: steps.project-type.outputs.type == 'shopware'
