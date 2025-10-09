@@ -21,7 +21,7 @@
         },
         "type": {
           "type": "string",
-          "description": "Project type (auto-detected if not specified). Detection order: shopware-project.yml → artisan → symfony.lock → default shopware",
+          "description": "Project type (auto-detected if not specified). Detection order: .shopware-project.yml → artisan → symfony.lock → default shopware",
           "enum": ["shopware", "laravel", "symfony", "generic"],
           "default": "shopware"
         }

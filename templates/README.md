@@ -117,7 +117,7 @@ jobs:
 ## Framework-Specific Features
 
 ### Shopware
-- **Auto-detection**: Presence of `shopware-project.yml`
+- **Auto-detection**: Presence of `.shopware-project.yml`
 - **Build**: Uses Shopware CLI for production builds
 - **Deployment**: Shared folders for files, media, themes
 - **Quality**: PHPUnuhi translation validation

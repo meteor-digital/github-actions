@@ -19,7 +19,7 @@ This shared composite action auto-detects project types based on the presence of
 
 The action detects project types in the following priority order:
 
-1. **Shopware**: `shopware-project.yml` file exists
+1. **Shopware**: `.shopware-project.yml` file exists
 2. **Laravel**: `artisan` file exists
 3. **Symfony**: `symfony.lock` file exists
 4. **Default**: Shopware (for backward compatibility)
@@ -60,7 +60,7 @@ This action is used by:
 
 | Project Type | Detection File | Description |
 |--------------|----------------|-------------|
-| Shopware | `shopware-project.yml` | Shopware project configuration file |
+| Shopware | `.shopware-project.yml` | Shopware project configuration file |
 | Laravel | `artisan` | Laravel's command-line interface |
 | Symfony | `symfony.lock` | Symfony's dependency lock file |
 

@@ -58,8 +58,8 @@ runs:
           echo "🔍 Auto-detecting from project files..."
           
           # Detection priority order as per design
-          if [ -f "shopware-project.yml" ]; then
-            echo "✅ Found shopware-project.yml - Shopware project detected"
+          if [ -f ".shopware-project.yml" ]; then
+            echo "✅ Found .shopware-project.yml - Shopware project detected"
             PROJECT_TYPE="shopware"
             DETECTION_METHOD="file"
           elif [ -f "artisan" ]; then

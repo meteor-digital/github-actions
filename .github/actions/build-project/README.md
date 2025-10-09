@@ -22,7 +22,7 @@ This composite action builds projects using framework-specific commands and conf
 
 The action detects project types in the following priority order:
 
-1. **Shopware**: `shopware-project.yml` exists
+1. **Shopware**: `.shopware-project.yml` exists
 2. **Laravel**: `artisan` file exists  
 3. **Symfony**: `symfony.lock` exists
 4. **Default**: Shopware (for backward compatibility)

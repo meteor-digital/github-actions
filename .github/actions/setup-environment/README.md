@@ -70,7 +70,7 @@ runtime:
 
 The action uses the `detect-project-type` action to automatically detect project types based on file presence:
 
-1. **Shopware**: `shopware-project.yml` exists
+1. **Shopware**: `.shopware-project.yml` exists
 2. **Laravel**: `artisan` file exists  
 3. **Symfony**: `symfony.lock` exists
 4. **Generic**: Default fallback for other project types
@@ -127,7 +127,7 @@ deps-{composer-hash}-{node-hash}[-nodev]
 After installing dependencies, the action performs framework-specific validation:
 
 ### Shopware Projects
-- Verifies `shopware-project.yml` exists
+- Verifies `.shopware-project.yml` exists
 - Checks for required directories: `config/`, `public/`, `src/`
 - Prepares environment for Shopware CLI usage (installed by build-project action)
 

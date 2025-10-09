@@ -136,7 +136,7 @@ runs:
             echo "🛍️  Setting up Shopware environment..."
             
             # Verify Shopware project structure
-            if [ -f "shopware-project.yml" ]; then
+            if [ -f ".shopware-project.yml" ]; then
               echo "✅ Shopware project configuration found"
             fi
             

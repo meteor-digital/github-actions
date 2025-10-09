@@ -177,7 +177,7 @@ build:
     grumphp.yml
     phpunuhi.xml
     bitbucket-pipelines.yml
-    shopware-project.yml
+    .shopware-project.yml
     Jenkinsfile*
     patch/*
     scripts/*

@@ -146,7 +146,7 @@ The action follows this deployment process (based on proven patterns):
 ## Framework Support
 
 ### Shopware (Default)
-- **Detection**: `shopware-project.yml` file exists
+- **Detection**: `.shopware-project.yml` file exists
 - **Migration Command**: `bin/console database:migrate --all`
 - **Default Shared Folders**: `files`, `public/media`, `public/sitemap`, `public/thumbnail`, `config/jwt`, `var/log`
 - **Default Post-deploy**: Cache warmup, theme compilation
