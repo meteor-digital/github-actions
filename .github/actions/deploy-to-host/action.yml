@@ -150,7 +150,7 @@ runs:
         host: ${{ steps.config.outputs.host }}
         ssh_port: ${{ steps.config.outputs.ssh_port }}
         ssh_user: ${{ steps.config.outputs.ssh_user }}
-        working_directory: ${{ steps.config.outputs.path }}/current
+        working_directory: ${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}
         commands: ${{ steps.config.outputs.maintenance_enable_cmd }}
         description: 'maintenance mode (enable)'
 
