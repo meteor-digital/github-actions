@@ -55,21 +55,23 @@ deployment:
     test:
       host: "test.example.com"  # Replace with actual hostname
       path: "/var/www/test"  # Replace with actual path
+      ssh_user: "deploy"  # Replace with actual SSH username
       maintenance_mode: false  # Generic projects may not support maintenance mode
       
     staging:
       host: "staging.example.com"  # Replace with actual hostname
       path: "/var/www/staging"  # Replace with actual path
+      ssh_user: "deploy"  # Replace with actual SSH username
       maintenance_mode: false
       
     prod:
       host: "prod.example.com"  # Replace with actual hostname
       path: "/var/www/prod"  # Replace with actual path
+      ssh_user: "deploy"  # Replace with actual SSH username
       maintenance_mode: false
 
   hosting:
     provider: "{{HOSTING_PROVIDER}}"  # Use generic provider for custom setups
-    ssh_port: 22
     php_service: "php-fpm"
     custom_commands:
       restart_services: "sudo service nginx reload && sudo service php-fpm restart"

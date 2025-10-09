@@ -259,18 +259,6 @@
               "description": "Hosting provider type",
               "enum": ["level27", "byte", "hipex", "hostedpower", "generic"]
             },
-            "ssh_user": {
-              "type": "string",
-              "description": "SSH username for deployment connections",
-              "examples": ["deploy", "www-data", "vd12345"]
-            },
-            "ssh_port": {
-              "type": "integer",
-              "description": "SSH port for deployment connections",
-              "minimum": 1,
-              "maximum": 65535,
-              "default": 22
-            },
             "php_service": {
               "type": "string",
               "description": "PHP service name for restart commands",
@@ -372,7 +360,7 @@
     "environment": {
       "type": "object",
       "description": "Single environment configuration",
-      "required": ["host", "path"],
+      "required": ["host", "path", "ssh_user"],
       "properties": {
         "host": {
           "type": "string",
@@ -403,6 +391,14 @@
           "type": "string",
           "description": "SSH username for deployment connection",
           "examples": ["deploy", "www-data", "vd22790"]
+        },
+        "ssh_port": {
+          "type": "integer",
+          "description": "SSH port for deployment connection",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 22,
+          "examples": [22, 2222]
         }
       },
       "additionalProperties": false

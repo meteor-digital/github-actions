@@ -64,21 +64,23 @@ deployment:
     test:
       host: "test.example.com"  # Replace with actual hostname
       path: "/var/www/test"  # Replace with actual path
+      ssh_user: "vd12345"  # Replace with actual SSH username
       maintenance_mode: true
       
     staging:
       host: "staging.example.com"  # Replace with actual hostname
       path: "/var/www/staging"  # Replace with actual path
+      ssh_user: "vd12345"  # Replace with actual SSH username
       maintenance_mode: true
       
     prod:
       host: "prod.example.com"  # Replace with actual hostname
       path: "/var/www/prod"  # Replace with actual path
+      ssh_user: "vd12345"  # Replace with actual SSH username
       maintenance_mode: true
 
   hosting:
     provider: "{{HOSTING_PROVIDER}}"  # level27, byte, hipex, hostedpower, generic
-    ssh_port: 22
     php_service: "php8.1-fpm"
     messenger_worker_id: "1"  # For Symfony messenger workers (Level27 specific)
 

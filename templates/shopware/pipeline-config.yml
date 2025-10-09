@@ -75,16 +75,19 @@ deployment:
     test:
       host: "test.example.com"  # Replace with actual hostname
       path: "/var/www/test"  # Replace with actual path
+      ssh_user: "vd12345"  # Replace with actual SSH username
       messenger_worker_id: "1"
       
     acc:
       host: "acc.example.com"  # Replace with actual hostname
       path: "/var/www/acc"  # Replace with actual path
+      ssh_user: "vd12345"  # Replace with actual SSH username
       messenger_worker_id: "2"
       
     prod:
       host: "prod.example.com"  # Replace with actual hostname
       path: "/var/www/prod"  # Replace with actual path
+      ssh_user: "vd12345"  # Replace with actual SSH username
       messenger_worker_id: "3"
 
   hosting:
