@@ -286,7 +286,7 @@ runs:
         config/jwt
         var/log"
             PRE_DEPLOY_COMMANDS="bin/console cache:warmup --no-optional-warmers"
-            POST_DEPLOY_COMMANDS="bin/console theme:dump
+            POST_DEPLOY_COMMANDS="bin/console theme:dump --no-interaction
         bin/console theme:compile --active-only"
             MIGRATION_COMMAND="bin/console database:migrate --all"
             MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
