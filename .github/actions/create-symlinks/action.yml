@@ -37,7 +37,14 @@ runs:
         SHARED_FOLDERS="${{ inputs.shared_folders }}"
         
         # Create .env.local symlink first
-        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "cd $DEPLOY_PATH/$RELEASE_DIR && ln -sf $DEPLOY_PATH/shared/.env.local .env.local"
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+          # Ensure shared .env.local exists
+          if [ ! -f $DEPLOY_PATH/shared/.env.local ]; then
+            touch $DEPLOY_PATH/shared/.env.local
+            echo 'Created empty .env.local in shared folder'
+          fi
+          cd $DEPLOY_PATH/$RELEASE_DIR && ln -sf $DEPLOY_PATH/shared/.env.local .env.local
+        "
         
         # Remove empty folders to create symlinks
         ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
