@@ -45,7 +45,8 @@ build:
     .editorconfig
     .envrc
     .vscode
-    composer*
+    /composer.json
+    /composer.lock
     flake*
     symfony.lock
     package*.json
