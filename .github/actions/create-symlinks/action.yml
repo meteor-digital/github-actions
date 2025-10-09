@@ -46,9 +46,15 @@ runs:
             # Trim whitespace from folder name
             folder=\$(echo \"\$folder\" | sed 's/^[[:space:]]*//;s/[[:space:]]*\$//')
             if [ -n \"\$folder\" ]; then
+              target_path=\"$DEPLOY_PATH/shared/\$folder\"
+              # Ensure shared folder exists
+              if [ ! -e \"\$target_path\" ]; then
+                echo \"Creating shared folder: \$target_path\"
+                mkdir -p \"\$target_path\"
+              fi
               echo \"Removing and symlinking: \$folder\"
               rm -rf \"\$folder\"
-              ln -sf \"$DEPLOY_PATH/shared/\$folder\" \"\$folder\"
+              ln -sf \"\$target_path\" \"\$folder\"
             fi
           done << 'EOF'
         $SHARED_FOLDERS
