@@ -52,6 +52,10 @@ runs:
                 echo \"Creating shared folder: \$target_path\"
                 mkdir -p \"\$target_path\"
               fi
+              
+              # Create parent directory in release folder if it doesn't exist
+              mkdir -p \"\$(dirname \"\$folder\")\"
+              
               echo \"Removing and symlinking: \$folder\"
               rm -rf \"\$folder\"
               ln -sf \"\$target_path\" \"\$folder\"
