@@ -149,6 +149,9 @@ jobs:
             custom/static-plugins/**/*.php
             tests/**/*.php
             **/*.php
+          files_ignore: |
+            **/.php-cs-fixer.dist.php
+            **/.php-cs-fixer.php
 
       - name: Check PHP-CS-Fixer config exists
         if: contains(fromJson(needs.setup.outputs.enabled_tools), 'php-cs-fixer')
@@ -299,6 +302,8 @@ jobs:
             custom/static-plugins/**/*.php
             tests/**/*.php
             **/*.php
+          files_ignore: |
+            **/rector.php
 
       - name: Run Rector on changed files
         if: hashFiles('rector.php') != '' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
