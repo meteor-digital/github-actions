@@ -33,7 +33,7 @@ runs:
         DEPLOY_DATE="${{ inputs.deploy_date }}"
         
         # Link the new release to the current version (atomic deployment)
-        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "[ -d $DEPLOY_PATH/current ] && unlink $DEPLOY_PATH/current || exit 0"
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "[ -L $DEPLOY_PATH/current ] && unlink $DEPLOY_PATH/current || [ -e $DEPLOY_PATH/current ] && rm -rf $DEPLOY_PATH/current || true"
         ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "ln -s $DEPLOY_PATH/releases/$DEPLOY_DATE/ $DEPLOY_PATH/current"
         
         # Set Sentry release for error tracking
