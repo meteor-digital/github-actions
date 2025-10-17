@@ -46,7 +46,7 @@ runs:
       if: steps.project-type.outputs.type == 'shopware'
       uses: shopwareLabs/build-project-action@v1
       env:
-        SHOPWARE_CLI_EXPERIMENTAL_ASSET_CACHING: 1
+        SHOPWARE_CLI_EXPERIMENTAL_ASSET_CACHING: 0
         
     - name: '🅰️ Build Laravel project'
       if: steps.project-type.outputs.type == 'laravel'
