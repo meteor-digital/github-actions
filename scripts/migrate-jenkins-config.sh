@@ -166,10 +166,7 @@ build:
     .editorconfig
     .envrc
     .vscode
-    /composer.json
-    /composer.lock
     flake.*
-    symfony.lock
     phpunit.xml*
     psalm*
     rector.php

@@ -45,11 +45,7 @@ build:
     .editorconfig
     .envrc
     .vscode
-    /composer.json
-    /composer.lock
     flake*
-    symfony.lock
-    package*.json
     phpunit.xml*
     psalm*
     rector.php
