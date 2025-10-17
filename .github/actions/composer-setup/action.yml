@@ -10,11 +10,16 @@ inputs:
     description: 'Whether to install dev dependencies (yes/no)'
     required: false
     default: 'yes'
+  skip_cache:
+    description: 'Skip caching (yes/no)'
+    required: false
+    default: 'no'
 
 runs:
   using: 'composite'
   steps:
     - name: Cache vendor directory
+      if: inputs.skip_cache != 'yes'
       id: cache-vendor
       uses: actions/cache@v4
       with:
@@ -25,7 +30,7 @@ runs:
           ${{ runner.os }}-vendor-
 
     - name: Cache Composer cache directory
-      if: steps.cache-vendor.outputs.cache-hit != 'true'
+      if: inputs.skip_cache != 'yes' && steps.cache-vendor.outputs.cache-hit != 'true'
       uses: actions/cache@v4
       with:
         path: ~/.composer/cache
@@ -34,7 +39,7 @@ runs:
           ${{ runner.os }}-composer-
 
     - name: Install dependencies
-      if: steps.cache-vendor.outputs.cache-hit != 'true'
+      if: inputs.skip_cache == 'yes' || steps.cache-vendor.outputs.cache-hit != 'true'
       shell: bash
       run: |
         if [[ "${{ inputs.with_dev }}" == "no" ]]; then

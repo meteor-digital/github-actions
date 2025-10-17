@@ -18,6 +18,10 @@ inputs:
     description: 'Whether to skip Node.js setup'
     required: false
     default: 'false'
+  skip_composer_cache:
+    description: 'Skip Composer caching (yes/no)'
+    required: false
+    default: 'no'
 
 outputs:
   php_version:
@@ -107,6 +111,7 @@ runs:
       with:
         args: '--prefer-dist --no-progress --no-interaction --optimize-autoloader --no-scripts'
         with_dev: ${{ inputs.composer_with_dev }}
+        skip_cache: ${{ inputs.skip_composer_cache }}
       env:
         COMPOSER_AUTH: ${{ inputs.composer_auth }}
 

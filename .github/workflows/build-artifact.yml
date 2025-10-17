@@ -67,6 +67,7 @@ jobs:
           composer_auth: ${{ secrets.composer_auth }}
           # Force Node.js setup for Shopware admin builds (even without package.json)
           node_skip_setup: ${{ steps.detect_type.outputs.type == 'shopware' && 'false' || 'true' }}
+          skip_composer_cache: 'yes'
           
       - name: Build project
         uses: meteor-digital/github-actions/.github/actions/build-project@main
