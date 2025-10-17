@@ -129,6 +129,20 @@ runs:
         release_dir: ${{ steps.setup.outputs.release_dir }}
         shared_folders: ${{ steps.config.outputs.shared_folders }}
 
+    - name: Regenerate Composer autoloader
+      shell: bash
+      run: |
+        echo "🔄 Regenerating Composer autoloader for deployment path..."
+        
+        HOST="${{ steps.config.outputs.host }}"
+        SSH_PORT="${{ steps.config.outputs.ssh_port }}"
+        SSH_USER="${{ steps.config.outputs.ssh_user }}"
+        RELEASE_PATH="${{ steps.config.outputs.path }}/${{ steps.setup.outputs.release_dir }}"
+        
+        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "cd $RELEASE_PATH && composer dump-autoload -o --no-dev"
+        
+        echo "✅ Composer autoloader regenerated successfully"
+
     - name: Run pre-deployment commands
       if: steps.config.outputs.pre_deploy_commands != ''
       uses: meteor-digital/github-actions/.github/actions/run-commands-on-host@main
