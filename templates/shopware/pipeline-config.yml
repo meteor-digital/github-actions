@@ -95,7 +95,7 @@ deployment:
   # Shopware defaults are automatically applied:
   # - shared_folders: ["files", "public/media", "public/sitemap", "public/thumbnail", "config/jwt", "var/log"]
   # - pre_deploy: ["bin/console cache:warmup --no-optional-warmers"]
-  # - post_deploy: ["bin/console theme:dump", "bin/console theme:compile --active-only", "bin/console scheduled-task:register", "bin/console dal:refresh:index"]
+  # - post_deploy: ["bin/console theme:dump --no-interaction", "bin/console theme:compile --active-only", "bin/console asset:install"]
   # - cleanup: keep_releases: 3
   # - Database migrations are handled separately in the deployment workflow
 
@@ -107,9 +107,9 @@ deployment:
   #   pre_deploy:
   #     - "custom-pre-deploy-command"  # Add custom pre-deploy commands
   #   post_deploy:
-  #     - "bin/console theme:dump"
+  #     - "bin/console theme:dump --no-interaction"
   #     - "bin/console theme:compile --active-only"
-  #     - "bin/console database:migrate --all MyProject"
+  #     - "bin/console asset:install"
   #     - "custom-post-deploy-command"  # Add custom post-deploy commands
   # 
   # cleanup:

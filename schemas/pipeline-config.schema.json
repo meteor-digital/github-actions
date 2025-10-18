@@ -330,7 +330,7 @@
                 "type": "string"
               },
               "examples": [
-                ["bin/console theme:dump", "bin/console theme:compile --active-only"],
+                ["bin/console theme:dump --no-interaction", "bin/console theme:compile --active-only", "bin/console asset:install"],
                 ["php artisan config:cache", "php artisan route:cache"],
                 ["bin/console cache:warmup --env=prod"]
               ]
