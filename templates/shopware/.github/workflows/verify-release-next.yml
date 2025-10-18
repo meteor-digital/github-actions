@@ -19,7 +19,7 @@ on:
         default: 'release/next'
 
 jobs:
-  verify-release-next:
+  run:
     uses: meteor-digital/github-actions/.github/workflows/verify-release-next.yml@main
     with:
       branch_name: ${{ github.event.inputs.branch_name || 'release/next' }}

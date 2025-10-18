@@ -26,7 +26,7 @@ on:
         type: string
 
 jobs:
-  deploy:
+  run:
     uses: meteor-digital/github-actions/.github/workflows/deploy.yml@main
     with:
       config_path: ".github/pipeline-config.yml"

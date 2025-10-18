@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  run:
     uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
     with:
       config_path: ".github/pipeline-config.yml"

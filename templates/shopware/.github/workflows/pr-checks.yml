@@ -8,7 +8,7 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  pr-validation:
+  run:
     uses: meteor-digital/github-actions/.github/workflows/pr-checks.yml@main
     with:
       config_path: ".github/pipeline-config.yml"
