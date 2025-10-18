@@ -92,25 +92,27 @@ jobs:
           tar -czf "$TAR_PATH" --exclude='.git' --exclude='.github' --exclude='var' --exclude='.env.local' .
           mv "$TAR_PATH" .
           
+      - name: Generate build timestamp
+        if: github.ref_type == 'tag'
+        id: build_time
+        shell: bash
+        run: echo "timestamp=$(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+        
       - name: Create GitHub release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v1
         with:
           files: build-${{ github.ref_name }}.tar.gz
           tag_name: ${{ github.ref_name }}
-          name: ${{ steps.config.outputs.project_name }} Release ${{ github.ref_name }}
+          generate_release_notes: true
           body: |
-            🚀 Production Release ${{ github.ref_name }}
-
-            ---
+            ## 📦 Build Information
             
-            **Build Information:**
-            - Project: ${{ steps.config.outputs.project_name }}
-            - Commit: ${{ github.sha }}
-            - Build Date: ${{ github.event.head_commit.timestamp }}
-            - Workflow: ${{ github.workflow }} #${{ github.run_number }}
-            
-            **Artifact:** ${{ steps.determine_artifact_name.outputs.artifact_name }}
+            | Property | Value |
+            |----------|-------|
+            | **Build Date** | ${{ steps.build_time.outputs.timestamp }} |
+            | **Commit** | [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
+            | **Workflow Run** | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
           draft: false
           prerelease: false
           
