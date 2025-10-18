@@ -18,6 +18,7 @@ on:
       - '**.md'
       - 'docs/**'
       - '.github/ISSUE_TEMPLATE/**'
+  create:
 
 concurrency:
   group: build-${{ github.ref }}
@@ -25,6 +26,11 @@ concurrency:
 
 jobs:
   run:
+    # For create events, only run on test/* and release/x.x.x branches
+    if: |
+      github.event_name != 'create' || 
+      startsWith(github.ref_name, 'test/') || 
+      (startsWith(github.ref_name, 'release/') && github.ref_name != 'release/next')
     uses: meteor-digital/github-actions/.github/workflows/build-artifact.yml@main
     with:
       config_path: ".github/pipeline-config.yml"
