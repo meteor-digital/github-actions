@@ -75,6 +75,7 @@ jobs:
           config_file: ${{ inputs.config_path }}
           
       - name: Upload artifact with permission preservation
+        if: github.ref_type == 'branch'
         uses: pyTooling/upload-artifact@v4
         with:
           name: ${{ steps.determine_artifact_name.outputs.artifact_name }}
@@ -87,7 +88,9 @@ jobs:
         shell: bash
         run: |
           # Create release tar.gz from cleaned workspace (preserves Unix permissions)
-          tar --warning=no-file-changed -czpf build-${{ github.ref_name }}.tar.gz .
+          TAR_PATH="$RUNNER_TEMP/build-${{ github.ref_name }}.tar.gz"
+          tar -czf "$TAR_PATH" --exclude='.git' --exclude='.github' --exclude='var' --exclude='.env.local' .
+          mv "$TAR_PATH" .
           
       - name: Create GitHub release
         if: github.ref_type == 'tag'
