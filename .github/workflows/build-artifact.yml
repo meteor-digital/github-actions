@@ -123,12 +123,12 @@ jobs:
           webhook_url: ${{ steps.config.outputs.notification_webhook }}
           color: "00FF00"
           message: |
-            ✅ Build Artifact Created
+            ✅ ${{ github.ref_type == 'tag' && 'Release' || 'Build Artifact' }} Created
             
             ---
             
             **📋 Details:**
-            - **Artifact:** `${{ steps.determine_artifact_name.outputs.artifact_name }}`
+            - **${{ github.ref_type == 'tag' && 'Release' || 'Artifact' }}:** `${{ github.ref_type == 'tag' && github.ref_name || steps.determine_artifact_name.outputs.artifact_name }}`
             - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
       - name: Send failure notification

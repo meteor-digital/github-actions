@@ -174,7 +174,7 @@ jobs:
 
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
         
       - name: Download build artifact from workflow run
         if: needs.setup.outputs.final_artifact_name && needs.setup.outputs.final_artifact_run_id
@@ -217,7 +217,7 @@ jobs:
             
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
             - **Deployed at:** ${{ needs.setup.outputs.deploy_date }}
           
       - name: Send failure notification
@@ -233,4 +233,4 @@ jobs:
             
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **Artifact:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
