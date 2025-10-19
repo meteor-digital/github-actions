@@ -138,9 +138,10 @@ jobs:
           webhook_url: ${{ steps.config.outputs.notification_webhook }}
           color: "FF0000"
           message: |
-            ❌ Build Failed
+            ❌ ${{ github.ref_type == 'tag' && 'Creating Release' || 'Building Artifact' }} Failed
             
             ---
             
             **📋 Details:**
+            - **${{ github.ref_type == 'tag' && 'Release' || 'Artifact' }}:** `${{ github.ref_type == 'tag' && github.ref_name || steps.determine_artifact_name.outputs.artifact_name }}`
             - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})

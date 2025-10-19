@@ -42,16 +42,21 @@ runs:
         fi
 
         RUN_URL='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-        BRANCH='${{ github.ref_name }}'
+        REPO_URL='${{ github.server_url }}/${{ github.repository }}'
+        BRANCH_URL='${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}'
+        REPO_NAME='${{ github.repository }}'
+        BRANCH_NAME='${{ github.ref_name }}'
 
         # Build payload matching the working Teams webhook format
         jq -n \
           --arg color "$COLOR" \
-          --arg summary "${{ github.repository }}" \
           --arg title "$TITLE" \
           --arg text "$BODY_MD" \
           --arg runUrl "$RUN_URL" \
-          --arg branch "$BRANCH" \
+          --arg repoUrl "$REPO_URL" \
+          --arg branchUrl "$BRANCH_URL" \
+          --arg repoName "$REPO_NAME" \
+          --arg branchName "$BRANCH_NAME" \
           '{
             "type": "message",
             "attachments": [
@@ -81,11 +86,11 @@ runs:
                       "facts": [
                         {
                           "title": "Repository",
-                          "value": $summary
+                          "value": ("[" + $repoName + "](" + $repoUrl + ")")
                         },
                         {
                           "title": "Branch/Tag",
-                          "value": $branch
+                          "value": ("[" + $branchName + "](" + $branchUrl + ")")
                         },
                         {
                           "title": "Workflow Run",

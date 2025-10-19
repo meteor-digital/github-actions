@@ -170,7 +170,6 @@ jobs:
             ---
             
             **📋 Details:**
-            - **Branch:** `${{ inputs.branch_name }}`
             - **Author:** ${{ needs.check-commit-changes.outputs.commit_author }}
             - **Commit:** [${{ needs.check-commit-changes.outputs.commit_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ needs.check-commit-changes.outputs.commit_sha }})
             
