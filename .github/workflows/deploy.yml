@@ -186,7 +186,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Download release asset for manual deployment
-        if: needs.setup.outputs.final_release_version
+        if: inputs.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           gh release download ${{ needs.setup.outputs.final_release_version }} --pattern "*.tar.gz"
