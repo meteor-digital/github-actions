@@ -19,6 +19,9 @@ inputs:
     description: 'Timezone for timestamps'
     required: false
     default: 'Europe/Amsterdam'
+  branch_name:
+    description: 'Optional branch/tag name to display. If omitted, uses github.ref_name.'
+    required: false
 
 runs:
   using: 'composite'
@@ -43,9 +46,11 @@ runs:
 
         RUN_URL='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         REPO_URL='${{ github.server_url }}/${{ github.repository }}'
-        BRANCH_URL='${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}'
         REPO_NAME='${{ github.repository }}'
-        BRANCH_NAME='${{ github.ref_name }}'
+        
+        # Use branch_name input if provided, otherwise use github.ref_name
+        BRANCH_NAME='${{ inputs.branch_name || github.ref_name }}'
+        BRANCH_URL='${{ github.server_url }}/${{ github.repository }}/tree/${{ inputs.branch_name || github.ref_name }}'
 
         # Build payload matching the working Teams webhook format
         jq -n \

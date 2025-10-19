@@ -121,6 +121,7 @@ jobs:
       final_artifact_name: ${{ needs.determine-params.outputs.artifact_name }}
       final_artifact_run_id: ${{ needs.determine-params.outputs.artifact_run_id }}
       final_release_version: ${{ needs.determine-params.outputs.release_version }}
+      final_branch: ${{ inputs.workflow_run_branch || github.ref_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -166,6 +167,7 @@ jobs:
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ needs.setup.outputs.notification_webhook }}
+          branch_name: ${{ needs.setup.outputs.final_branch }}
           color: "FFFF00"
           message: |
             🚀 Deployment Started
@@ -209,6 +211,7 @@ jobs:
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ needs.setup.outputs.notification_webhook }}
+          branch_name: ${{ needs.setup.outputs.final_branch }}
           color: "00FF00"
           message: |
             ✅ Deployment Successful
@@ -225,6 +228,7 @@ jobs:
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ needs.setup.outputs.notification_webhook }}
+          branch_name: ${{ needs.setup.outputs.final_branch }}
           color: "FF0000"
           message: |
             ❌ Deployment Failed

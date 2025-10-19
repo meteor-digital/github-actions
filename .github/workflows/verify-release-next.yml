@@ -162,6 +162,7 @@ jobs:
         uses: meteor-digital/github-actions/.github/actions/notify-teams@main
         with:
           webhook_url: ${{ steps.ci_config.outputs.notification_webhook }}
+          branch_name: ${{ inputs.branch_name }}
           color: "FF0000"
           timezone: ${{ inputs.schedule_timezone }}
           message: |
