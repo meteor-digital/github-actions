@@ -128,7 +128,7 @@ jobs:
             ---
             
             **📋 Details:**
-            - **${{ github.ref_type == 'tag' && 'Release' || 'Artifact' }}:** `${{ github.ref_type == 'tag' && github.ref_name || steps.determine_artifact_name.outputs.artifact_name }}`
+            - **${{ github.ref_type == 'tag' && 'Release' || 'Artifact' }}:** ${{ github.ref_type == 'tag' && format('[{0}]({1}/{2}/releases/tag/{0})', github.ref_name, github.server_url, github.repository) || format('`{0}`', steps.determine_artifact_name.outputs.artifact_name) }}
             - **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
           
       - name: Send failure notification
