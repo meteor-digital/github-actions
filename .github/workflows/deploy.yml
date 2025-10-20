@@ -121,7 +121,7 @@ jobs:
       final_artifact_name: ${{ needs.determine-params.outputs.artifact_name }}
       final_artifact_run_id: ${{ needs.determine-params.outputs.artifact_run_id }}
       final_release_version: ${{ needs.determine-params.outputs.release_version }}
-      final_branch: ${{ inputs.workflow_run_branch || github.ref_name }}
+      final_branch: ${{ steps.setup.outputs.branch }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -141,10 +141,28 @@ jobs:
       - name: Setup deployment variables
         id: setup
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Format date and set as output
           DEPLOY_DATE=$(date +'%Y%m%d.%H%M')
           echo "deploy_date=$DEPLOY_DATE" >> $GITHUB_OUTPUT
+          
+          # Determine the branch/tag to display
+          if [ -n "${{ inputs.workflow_run_branch }}" ]; then
+            # Automatic deployment - use the branch that triggered the build
+            BRANCH="${{ inputs.workflow_run_branch }}"
+          elif [ -n "${{ needs.determine-params.outputs.release_version }}" ]; then
+            # Manual deployment with specific version
+            BRANCH="${{ needs.determine-params.outputs.release_version }}"
+          elif [ "${{ inputs.event_name }}" = "workflow_dispatch" ]; then
+            # Manual deployment with latest release - get the latest tag
+            BRANCH=$(gh release view --json tagName --jq '.tagName' 2>/dev/null || echo "${{ github.ref_name }}")
+          else
+            # Fallback to current branch
+            BRANCH="${{ github.ref_name }}"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
   deploy:
     name: 'Deploy to ${{ needs.setup.outputs.final_environment }}'
@@ -176,7 +194,7 @@ jobs:
 
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version || 'latest' }}
         
       - name: Download build artifact from workflow run
         if: needs.setup.outputs.final_artifact_name && needs.setup.outputs.final_artifact_run_id
@@ -220,7 +238,7 @@ jobs:
             
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_branch }}
             - **Deployed at:** ${{ needs.setup.outputs.deploy_date }}
           
       - name: Send failure notification
@@ -237,4 +255,4 @@ jobs:
             
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_branch }}
