@@ -84,7 +84,7 @@ fi
 
 # Update hosting provider in pipeline config
 echo "Setting hosting provider to $HOSTING_PROVIDER..."
-sed -i "s/{{HOSTING_PROVIDER}}/$HOSTING_PROVIDER/g" .github/pipeline-config.yml
+sed "s/{{HOSTING_PROVIDER}}/$HOSTING_PROVIDER/g" .github/pipeline-config.yml > .github/pipeline-config.yml.tmp && mv .github/pipeline-config.yml.tmp .github/pipeline-config.yml
 
 echo ""
 echo "✅ Setup completed successfully!"
