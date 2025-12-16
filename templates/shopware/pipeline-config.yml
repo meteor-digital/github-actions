@@ -24,7 +24,7 @@ quality_checks:
   
   # Override default binary paths (defaults are vendor/bin/[tool])
   tool_binaries:
-    php-cs-fixer: "./vendor/meteor/shop6-project-conventions/tools/php-cs-fixer"
+    php-cs-fixer: "./vendor/php-cs-fixer/shim"
     
   # Optional: Custom quality checks specific to your project
   # custom_checks:
