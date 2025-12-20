@@ -6,8 +6,8 @@ project:
   # type: "shopware"  # Auto-detected from .shopware-project.yml
 
 runtime:
-  php_version: "8.1"  # PHP version for builds and quality checks
-  node_version: "18"  # Node.js version for asset compilation
+  php_version: "8.4"  # PHP version for builds and quality checks
+  node_version: "22"  # Node.js version for asset compilation
   # php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
   
 notifications:
