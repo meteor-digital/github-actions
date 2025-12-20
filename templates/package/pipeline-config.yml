@@ -1,0 +1,26 @@
+# Unified CI/CD Configuration for PHP Packages
+# Schema: https://raw.githubusercontent.com/meteor-digital/github-actions/main/schemas/pipeline-config.schema.json
+
+project:
+  name: "my-package"  # Used for artifacts and notifications
+  type: "package"     # Explicitly set for Composer packages
+
+runtime:
+  php_version: "8.4"  # PHP version for quality checks
+  node_version: "18"  # Node.js version if needed
+
+quality_checks:
+  # Standard quality tools (use their default config files)
+  enabled_tools:
+    - "php-cs-fixer"      # Uses .php-cs-fixer.php or .php-cs-fixer.dist.php
+    - "phpstan"           # Uses phpstan.neon or phpstan.neon.dist
+    - "composer-validate" # Validates composer.json and composer.lock
+  
+  # Optional: Override default binary paths (defaults are vendor/bin/[tool])
+  # tool_binaries:
+  #   php-cs-fixer: "./vendor/meteor/shop6-project-conventions/tools/php-cs-fixer"
+  
+  # Optional: Custom quality checks specific to your package
+  custom_checks:
+    - name: "security-audit"
+      command: "composer audit"

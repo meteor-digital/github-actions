@@ -10,7 +10,7 @@ inputs:
     description: 'Target environment (required for deployment parsing)'
     required: false
   project_type:
-    description: 'Project type (shopware, laravel, symfony)'
+    description: 'Project type (shopware, laravel, symfony, package, generic)'
     required: false
 
 outputs:
@@ -316,9 +316,18 @@ runs:
             MAINTENANCE_ENABLE_CMD="touch maintenance.html"
             MAINTENANCE_DISABLE_CMD="rm -f maintenance.html"
             ;;
+          'package'|'generic')
+            echo "✅ Loading package/generic defaults (no deployment)"
+            SHARED_FOLDERS=""
+            PRE_DEPLOY_COMMANDS=""
+            POST_DEPLOY_COMMANDS=""
+            MIGRATION_COMMAND=""
+            MAINTENANCE_ENABLE_CMD=""
+            MAINTENANCE_DISABLE_CMD=""
+            ;;
           *)
             echo "❌ Error: No defaults found for project type '$PROJECT_TYPE'"
-            echo "Supported project types: shopware, laravel, symfony"
+            echo "Supported project types: shopware, laravel, symfony, package, generic"
             exit 1
             ;;
         esac

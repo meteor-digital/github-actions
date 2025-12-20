@@ -79,12 +79,12 @@ runs:
         
         # Validate project type
         case "$PROJECT_TYPE" in
-          "shopware"|"laravel"|"symfony"|"generic")
+          "shopware"|"laravel"|"symfony"|"generic"|"package")
             echo "✅ Valid project type: $PROJECT_TYPE (detected via: $DETECTION_METHOD)"
             ;;
           *)
             echo "❌ Error: Invalid project type '$PROJECT_TYPE'"
-            echo "   Valid options: shopware, laravel, symfony, generic"
+            echo "   Valid options: shopware, laravel, symfony, generic, package"
             exit 1
             ;;
         esac
