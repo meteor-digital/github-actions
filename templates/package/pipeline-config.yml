@@ -15,12 +15,13 @@ quality_checks:
     - "php-cs-fixer"      # Uses .php-cs-fixer.php or .php-cs-fixer.dist.php
     - "phpstan"           # Uses phpstan.neon or phpstan.neon.dist
     - "composer-validate" # Validates composer.json and composer.lock
+    - "composer-audit"    # Security audit for dependencies
   
   # Optional: Override default binary paths (defaults are vendor/bin/[tool])
   # tool_binaries:
   #   php-cs-fixer: "./vendor/meteor/shop6-project-conventions/tools/php-cs-fixer"
   
   # Optional: Custom quality checks specific to your package
-  custom_checks:
-    - name: "security-audit"
-      command: "composer audit"
+  # custom_checks:
+  #   - name: "custom-check"
+  #     command: "php bin/custom-check.php"

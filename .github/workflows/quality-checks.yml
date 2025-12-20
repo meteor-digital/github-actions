@@ -139,6 +139,13 @@ jobs:
           echo "📦 Running Composer validation..."
           composer validate --no-check-all --strict
 
+      - name: Run Composer Audit
+        if: contains(fromJson(needs.setup.outputs.enabled_tools), 'composer-audit')
+        shell: bash
+        run: |
+          echo "🔒 Running Composer security audit..."
+          composer audit
+
       - name: Get changed files
         if: inputs.check_changed_files_only == true
         id: changed-files
