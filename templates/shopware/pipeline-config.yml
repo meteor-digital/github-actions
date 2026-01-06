@@ -7,7 +7,7 @@ project:
 
 runtime:
   php_version: "8.4"  # PHP version for builds and quality checks
-  node_version: "22"  # Node.js version for asset compilation
+  node_version: "24"  # Node.js version for asset compilation
   # php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
   
 notifications:
