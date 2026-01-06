@@ -289,7 +289,7 @@ runs:
             POST_DEPLOY_COMMANDS="bin/console theme:dump --no-interaction
         bin/console theme:compile --active-only
         bin/console asset:install"
-            MIGRATION_COMMAND="bin/console database:migrate --all"
+            MIGRATION_COMMAND="bin/console database:migrate --all ${{ steps.parse_ci.outputs.project_name }}"
             MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
             MAINTENANCE_DISABLE_CMD="bin/console sales-channel:maintenance:disable --all"
             ;;
