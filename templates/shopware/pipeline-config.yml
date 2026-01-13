@@ -35,8 +35,8 @@ quality_checks:
 
 build:
   # Files and directories to exclude from build artifacts
-  exclude_patterns: |
-    # phpunuhi.xml
+#  exclude_patterns: |
+#    phpunuhi.xml
   
   # Commands to run during build process
   build_commands: []
