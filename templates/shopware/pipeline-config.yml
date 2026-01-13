@@ -36,27 +36,7 @@ quality_checks:
 build:
   # Files and directories to exclude from build artifacts
   exclude_patterns: |
-    *.git*
-    node_modules/*
-    tests/*
-    *.md
-    docker-compose*
-    devenv*
-    .editorconfig
-    .envrc
-    .vscode
-    flake*
-    phpunit.xml*
-    psalm*
-    rector.php
-    .php-cs-fixer.php
-    grumphp.yml
-    phpunuhi.xml
-    bitbucket-pipelines.yml
-    .shopware-project.yml
-    Jenkinsfile*
-    patch/*
-    scripts/*
+    # phpunuhi.xml
   
   # Commands to run during build process
   build_commands: []
