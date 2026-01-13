@@ -66,10 +66,15 @@ deployment:
       path: "/var/www/prod"  # Replace with actual path
       ssh_user: "vd12345"  # Replace with actual SSH username
       messenger_worker_id: "3"
+      # Optional: Override global hosting configuration
+      # hosting:
+      #   provider: "level27"
+      #   php_service: "php8.3-fpm"
 
-  hosting:
-    provider: "{{HOSTING_PROVIDER}}"  # level27, byte, hipex, hostedpower, generic
-    php_service: "php8.1-fpm"
+  # Global hosting configuration (optional, defaults to generic/php-fpm)
+  # hosting:
+  #   provider: "level27"  # level27, byte, hipex, hostedpower, generic
+  #   php_service: "php8.1-fpm"
 
   # Optional: Override framework defaults
   # Shopware defaults are automatically applied:

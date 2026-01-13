@@ -377,9 +377,16 @@ runs:
         SSH_PORT=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_port" "$CONFIG_FILE" 2>/dev/null)
         SSH_USER=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_user" "$CONFIG_FILE" 2>/dev/null)
         
-        # Parse hosting configuration
-        PROVIDER=$(yq eval ".deployment.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
-        PHP_SERVICE=$(yq eval ".deployment.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
+        # Parse hosting configuration (environment-specific with fallback)
+        PROVIDER=$(yq eval ".deployment.environments.${ENVIRONMENT}.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
+        if [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ]; then
+          PROVIDER=$(yq eval ".deployment.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
+        fi
+
+        PHP_SERVICE=$(yq eval ".deployment.environments.${ENVIRONMENT}.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
+        if [ -z "$PHP_SERVICE" ] || [ "$PHP_SERVICE" = "null" ]; then
+          PHP_SERVICE=$(yq eval ".deployment.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
+        fi
         
         # Parse messenger worker ID (environment-specific with fallback)
         MESSENGER_WORKER_ID=$(yq eval ".deployment.environments.${ENVIRONMENT}.messenger_worker_id" "$CONFIG_FILE" 2>/dev/null)
@@ -394,6 +401,8 @@ runs:
         [ -z "$SSH_PORT" ] || [ "$SSH_PORT" = "null" ] && SSH_PORT="22"
         [ -z "$MAINTENANCE_MODE" ] || [ "$MAINTENANCE_MODE" = "null" ] && MAINTENANCE_MODE="true"
         [ -z "$KEEP_RELEASES" ] || [ "$KEEP_RELEASES" = "null" ] && KEEP_RELEASES="3"
+        [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ] && PROVIDER="generic"
+        [ -z "$PHP_SERVICE" ] || [ "$PHP_SERVICE" = "null" ] && PHP_SERVICE="php-fpm"
         
         # Validate required deployment configuration
         if [ -z "$HOST" ] || [ "$HOST" = "null" ]; then
@@ -403,11 +412,6 @@ runs:
         
         if [ -z "$DEPLOY_PATH" ] || [ "$DEPLOY_PATH" = "null" ]; then
           echo "❌ Error: Path not configured for environment '$ENVIRONMENT'"
-          exit 1
-        fi
-        
-        if [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ]; then
-          echo "❌ Error: Hosting provider not configured"
           exit 1
         fi
         
