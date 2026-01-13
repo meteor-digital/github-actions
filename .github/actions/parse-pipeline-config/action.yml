@@ -163,7 +163,21 @@ runs:
         EXCLUDE_PATTERNS="*.git*
         node_modules/*
         tests/*
+        *.md
+        devenv*
+        .editorconfig
         .env*
+        .vscode
+        phpunit.xml*
+        psalm*
+        rector.php
+        .php-cs-fixer.php
+        grumphp.yml
+        bitbucket-pipelines.yml
+        .shopware-project.yml
+        Jenkinsfile
+        patch/*
+        scripts/*
         *.log
         *.cache"
         
