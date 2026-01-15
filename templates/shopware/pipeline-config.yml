@@ -67,9 +67,8 @@ deployment:
       ssh_user: "vd12345"  # Replace with actual SSH username
       messenger_worker_id: "3"
       # Optional: Override global hosting configuration
-      # hosting:
-      #   provider: "level27"
-      #   php_service: "php8.3-fpm"
+      # provider: "level27"
+      # php_service: "php8.3-fpm"
 
   # Global hosting configuration (optional, defaults to generic/php-fpm)
   # hosting:

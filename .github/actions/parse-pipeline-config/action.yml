@@ -378,12 +378,12 @@ runs:
         SSH_USER=$(yq eval ".deployment.environments.${ENVIRONMENT}.ssh_user" "$CONFIG_FILE" 2>/dev/null)
         
         # Parse hosting configuration (environment-specific with fallback)
-        PROVIDER=$(yq eval ".deployment.environments.${ENVIRONMENT}.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
+        PROVIDER=$(yq eval ".deployment.environments.${ENVIRONMENT}.provider" "$CONFIG_FILE" 2>/dev/null)
         if [ -z "$PROVIDER" ] || [ "$PROVIDER" = "null" ]; then
           PROVIDER=$(yq eval ".deployment.hosting.provider" "$CONFIG_FILE" 2>/dev/null)
         fi
 
-        PHP_SERVICE=$(yq eval ".deployment.environments.${ENVIRONMENT}.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
+        PHP_SERVICE=$(yq eval ".deployment.environments.${ENVIRONMENT}.php_service" "$CONFIG_FILE" 2>/dev/null)
         if [ -z "$PHP_SERVICE" ] || [ "$PHP_SERVICE" = "null" ]; then
           PHP_SERVICE=$(yq eval ".deployment.hosting.php_service" "$CONFIG_FILE" 2>/dev/null)
         fi

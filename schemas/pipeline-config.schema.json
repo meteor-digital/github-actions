@@ -382,6 +382,16 @@
           "description": "Environment-specific messenger worker ID (overrides global setting)",
           "examples": ["1", "worker-1"]
         },
+        "provider": {
+          "type": "string",
+          "description": "Hosting provider type (flat override)",
+          "enum": ["level27", "byte", "hipex", "hostedpower", "generic"]
+        },
+        "php_service": {
+          "type": "string",
+          "description": "PHP service name for restart commands (flat override)",
+          "examples": ["php8.1-fpm", "php-fpm", "php81-fpm"]
+        },
         "database_url": {
           "type": "string",
           "description": "Database connection URL (optional, can use environment variables)",
@@ -399,23 +409,6 @@
           "maximum": 65535,
           "default": 22,
           "examples": [22, 2222]
-        },
-        "hosting": {
-          "type": "object",
-          "description": "Environment-specific hosting configuration (overrides global setting)",
-          "properties": {
-            "provider": {
-              "type": "string",
-              "description": "Hosting provider type",
-              "enum": ["level27", "byte", "hipex", "hostedpower", "generic"]
-            },
-            "php_service": {
-              "type": "string",
-              "description": "PHP service name for restart commands",
-              "examples": ["php8.1-fpm", "php-fpm", "php81-fpm"]
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false
