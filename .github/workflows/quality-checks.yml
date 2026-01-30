@@ -268,18 +268,37 @@ jobs:
             tests/**/*.php
             **/*.php
 
+      - name: Check PHPStan config exists
+        id: check-phpstan-config
+        shell: bash
+        run: |
+          if [ -f "phpstan.neon" ] || [ -f "phpstan.dist.neon" ]; then
+            echo "config_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "config_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run PHPStan on changed files
-        if: hashFiles('phpstan.neon') != '' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
+        if: steps.check-phpstan-config.outputs.config_exists == 'true' && (inputs.check_changed_files_only != true || steps.changed-files.outputs.any_changed == 'true')
         shell: bash
         run: |
           echo "🔍 Running PHPStan static analysis..."
           echo "  Using binary: ${{ needs.setup.outputs.phpstan_bin }}"
+          
+          # Determine config file
+          CONFIG_FILE=""
+          if [ -f "phpstan.neon" ]; then
+            CONFIG_FILE="phpstan.neon"
+          elif [ -f "phpstan.dist.neon" ]; then
+            CONFIG_FILE="phpstan.dist.neon"
+          fi
+
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration=phpstan.neon ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration="$CONFIG_FILE" ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  Analyzing all files"
-            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration=phpstan.neon
+            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration="$CONFIG_FILE"
           fi
 
   # Rector code fixing (slow task)
