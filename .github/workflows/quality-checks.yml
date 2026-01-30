@@ -38,17 +38,17 @@ jobs:
       rector_bin: ${{ steps.pipeline_config.outputs.rector_bin }}
       phpunit_bin: ${{ steps.pipeline_config.outputs.phpunit_bin }}
       phpunuhi_bin: ${{ steps.pipeline_config.outputs.phpunuhi_bin }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Parse pipeline configuration
         id: pipeline_config
         uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
         with:
           config_file: ${{ inputs.config_path }}
-      
+
       # Run the setup job here, so the cache is generated for the parallel jobs below
       - name: Setup environment
         id: setup_env
@@ -56,8 +56,8 @@ jobs:
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
-          composer_auth: ${{ secrets.composer_auth }}  
-  
+          composer_auth: ${{ secrets.composer_auth }}
+
 # Basic file validation tasks + PHPUnuhi validation (grouped for efficiency)
   file-validation:
     name: '📋 Validate Files & Translations'
@@ -66,21 +66,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Run file validation checks
         if: hashFiles('grumphp.yml') != ''
         shell: bash
         run: |
           echo "🔍 Running file validation checks..."
           php ./vendor/bin/grumphp run --tasks="git_blacklist,file_size,xmllint,yamllint,composer" || true
-      
+
       - name: Run PHPUnuhi validation
         if: hashFiles('phpunuhi.xml') != ''
         shell: bash
@@ -115,7 +115,7 @@ jobs:
           else
             echo "💡 No pipeline configuration file found, skipping custom checks"
           fi
-  
+
   # PHP code quality checks (fast tasks)
   quick-quality-checks:
     name: '⚡ Quick Code Quality'
@@ -124,14 +124,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Run Composer Validate
         if: contains(fromJson(needs.setup.outputs.enabled_tools), 'composer-validate')
         shell: bash
@@ -188,7 +188,7 @@ jobs:
 
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  🎯 Checking changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation --config "$CONFIG_FILE" ${{ steps.changed-files.outputs.all_changed_files }}
+            php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation --path-mode=intersection --config "$CONFIG_FILE" ${{ steps.changed-files.outputs.all_changed_files }}
           else
             echo "  📁 Checking all files"
             php ${{ needs.setup.outputs.php_cs_fixer_bin }} fix --dry-run --diff --stop-on-violation --config "$CONFIG_FILE"
@@ -197,7 +197,7 @@ jobs:
           echo "✅ PHP-CS-Fixer completed successfully"
 
         
-  
+
   # Psalm static analysis (slow task)
   psalm:
     name: '🔍 Psalm Static Analysis'
@@ -207,14 +207,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Get changed files
         if: inputs.check_changed_files_only == true
         id: changed-files
@@ -249,14 +249,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Get changed files
         if: inputs.check_changed_files_only == true
         id: changed-files
@@ -281,7 +281,7 @@ jobs:
             echo "  Analyzing all files"
             php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration=phpstan.neon
           fi
-          
+
   # Rector code fixing (slow task)
   rector:
     name: '🛠️ Rector Code Analysis'
@@ -291,14 +291,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Get changed files
         if: inputs.check_changed_files_only == true
         id: changed-files
@@ -325,7 +325,7 @@ jobs:
             echo "  Analyzing all files"
             php ${{ needs.setup.outputs.rector_bin }} process --dry-run --no-progress-bar
           fi 
- 
+
   unit-tests:
     name: '🧪 PHP Unit Tests'
     needs: setup
@@ -334,14 +334,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Run unit tests
         shell: bash
         run: |
@@ -349,8 +349,8 @@ jobs:
           echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
           php ${{ needs.setup.outputs.phpunit_bin }} --testsuite unit
         env:
-          SYMFONY_DEPRECATIONS_HELPER: disabled  
-  
+          SYMFONY_DEPRECATIONS_HELPER: disabled
+
   slow-testsuites:
     name: '🧪 Slow PHP Unit Test Suites'
     needs: setup
@@ -367,7 +367,7 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-      
+
       rabbitmq:
         image: rabbitmq:3-management
         ports:
@@ -376,14 +376,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup environment
         uses: meteor-digital/github-actions/.github/actions/setup-environment@main
         with:
           config_file: ${{ inputs.config_path }}
           composer_with_dev: 'yes'
           composer_auth: ${{ secrets.composer_auth }}
-      
+
       - name: Configure test environment
         shell: bash
         run: |
@@ -433,7 +433,7 @@ jobs:
           php ${{ needs.setup.outputs.phpunit_bin }} --testsuite integration
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled
-      
+
       - name: Run component tests
         shell: bash
         run: |
