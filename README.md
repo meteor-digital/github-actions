@@ -35,7 +35,7 @@ jobs:
 - **🔄 Reusable Workflows**: Generic templates for build, deploy, and quality checks
 - **⚙️ Configuration-Driven**: Single YAML file contains all CI/CD settings  
 - **🏗️ Multi-Framework**: Shopware 6, Laravel, Symfony, and generic PHP projects
-- **🌐 Multiple Hosting**: Level27, Byte, Hipex, HostedPower, and custom SSH
+- **🌐 Multiple Hosting**: Level27, Byte, Hipex, HostedPower, Forge, and custom SSH
 - **🔍 Quality Assurance**: PHP-CS-Fixer, Psalm, PHPStan, Rector, PHPUnit, security scanning
 - **📢 Smart Notifications**: Teams/Slack integration with rich formatting
 

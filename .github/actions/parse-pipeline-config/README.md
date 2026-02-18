@@ -144,7 +144,7 @@ deployment:
       messenger_worker_id: "2"
   
   hosting:
-    provider: "level27"  # level27, byte, hipex, hostedpower, generic
+    provider: "level27"  # level27, byte, hipex, hostedpower, forge, generic
     ssh_user: "deploy"  # Global default, can be overridden per environment
     php_service: "php8.1-fpm"
   

@@ -257,7 +257,7 @@
             "provider": {
               "type": "string",
               "description": "Hosting provider type",
-              "enum": ["level27", "byte", "hipex", "hostedpower", "generic"]
+              "enum": ["level27", "byte", "hipex", "hostedpower", "forge", "generic"]
             },
             "php_service": {
               "type": "string",
@@ -385,7 +385,7 @@
         "provider": {
           "type": "string",
           "description": "Hosting provider type (flat override)",
-          "enum": ["level27", "byte", "hipex", "hostedpower", "generic"]
+          "enum": ["level27", "byte", "hipex", "hostedpower", "forge", "generic"]
         },
         "php_service": {
           "type": "string",

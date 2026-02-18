@@ -16,7 +16,7 @@ display_help() {
     echo "Arguments:"
     echo "  project-type      The type of the project (e.g., shopware, laravel, symfony)."
     echo "                    This determines which template files are used."
-    echo "  hosting-provider  The hosting provider (e.g., level27, byte, hipex, hostedpower)."
+    echo "  hosting-provider  The hosting provider (e.g., level27, byte, hipex, hostedpower, forge)."
     echo "                    This sets the 'provider' in the pipeline-config.yml."
     echo
     echo "Options:"

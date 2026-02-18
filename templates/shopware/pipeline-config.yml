@@ -72,7 +72,7 @@ deployment:
 
   # Global hosting configuration (optional, defaults to generic/php-fpm)
   # hosting:
-  #   provider: "level27"  # level27, byte, hipex, hostedpower, generic
+  #   provider: "level27"  # level27, byte, hipex, hostedpower, forge, generic
   #   php_service: "php8.1-fpm"
 
   # Optional: Override framework defaults

@@ -5,7 +5,7 @@ Manages services (stop/restart) based on project type and hosting provider using
 ## Features
 
 - **Project-Type Aware**: Different service management for Shopware/Symfony vs Laravel
-- **Multi-Provider Support**: Level27, Byte, Hipex, HostedPower, and generic
+- **Multi-Provider Support**: Level27, Byte, Hipex, HostedPower, Forge, and generic
 - **Service Detection**: Handles messenger workers, queue workers, and PHP services
 - **Provider-Specific Commands**: Uses the correct commands for each hosting provider
 
@@ -75,6 +75,11 @@ hipex restart:phpfpm php-fpm
 ### HostedPower
 ```bash
 tscli opcache clear
+```
+
+### Forge
+```bash
+sudo /usr/sbin/service php8.4-fpm reload
 ```
 
 ### Generic

@@ -37,6 +37,7 @@ Use the automated setup script to copy templates and configure your project:
 ./scripts/setup-project.sh laravel byte
 ./scripts/setup-project.sh symfony hipex
 ./scripts/setup-project.sh generic hostedpower
+./scripts/setup-project.sh shopware forge
 ```
 
 The setup script will:

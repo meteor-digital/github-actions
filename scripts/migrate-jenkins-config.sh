@@ -119,6 +119,7 @@ SYSTEM=$(extract_value "$FIRST_FILE" "SYSTEM")
 case "${SYSTEM,,}" in
     "byte")         PROVIDER="byte" ;;
     "digitalocean") PROVIDER="generic" ;;
+    "forge")        PROVIDER="forge" ;;
     "level27")      PROVIDER="level27" ;;
     "hipex")        PROVIDER="hipex" ;;
     "hostedpower")  PROVIDER="hostedpower" ;;

@@ -5,7 +5,7 @@ A production-ready GitHub Action for deploying applications to remote hosts usin
 ## Features
 
 - **Multi-Framework Support**: Shopware, Laravel, Symfony with auto-detection
-- **Multiple Hosting Providers**: Level27, Byte, Hipex, HostedPower, and generic
+- **Multiple Hosting Providers**: Level27, Byte, Hipex, HostedPower, Forge, and generic
 - **Atomic Deployments**: Zero-downtime deployments using symlink switching
 - **Shared Folder Management**: Configurable shared folders with automatic symlink creation
 - **Service Management**: Framework and provider-specific service restart logic
@@ -83,7 +83,7 @@ environments:
     maintenance_mode: true
 
 hosting:
-  provider: "level27"  # Required: level27, byte, hipex, hostedpower, generic
+  provider: "level27"  # Required: level27, byte, hipex, hostedpower, forge, generic
   ssh_port: 22
   php_service: "php8.1-fpm"
   messenger_worker_id: "1"  # For Shopware/Symfony projects
@@ -177,6 +177,9 @@ The action follows this deployment process (based on proven patterns):
 
 ### HostedPower
 - **PHP Service**: `tscli opcache clear`
+
+### Forge
+- **PHP Service**: `sudo /usr/sbin/service php8.4-fpm reload`
 
 ### Generic
 - **PHP Service**: `sudo systemctl reload php-service`
