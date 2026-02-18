@@ -1,0 +1,130 @@
+name: 'Determine Deploy Parameters'
+description: 'Resolves deployment parameters (environment, version, artifact run ID) from either a workflow_dispatch or workflow_run event'
+
+inputs:
+  environment:
+    description: 'Target environment (required for workflow_dispatch; for workflow_run, resolved by caller from branch mapping)'
+    required: false
+  version:
+    description: 'Branch or tag to deploy (workflow_dispatch only). Leave empty to use latest release.'
+    required: false
+  artifact_workflow:
+    description: 'Filename of the artifact build workflow to search (e.g. build-artifact.yml)'
+    required: false
+    default: 'build-artifact.yml'
+  workflow_run_id:
+    description: 'Run ID from workflow_run event'
+    required: false
+  workflow_run_branch:
+    description: 'Branch from workflow_run event'
+    required: false
+  workflow_run_conclusion:
+    description: 'Conclusion from workflow_run event'
+    required: false
+  artifact_name:
+    description: 'Pre-resolved artifact name (workflow_run only, resolved by caller via determine-artifact-name)'
+    required: false
+  event_name:
+    description: 'GitHub event name (github.event_name)'
+    required: true
+
+outputs:
+  environment:
+    description: 'Resolved target environment'
+    value: ${{ steps.params.outputs.environment }}
+  version:
+    description: 'Resolved version/branch'
+    value: ${{ steps.params.outputs.version }}
+  artifact_name:
+    description: 'Artifact name to download (workflow_run only)'
+    value: ${{ steps.params.outputs.artifact_name }}
+  artifact_run_id:
+    description: 'Run ID of the artifact build to download from'
+    value: ${{ steps.params.outputs.artifact_run_id }}
+  should_deploy:
+    description: 'Whether deployment should proceed'
+    value: ${{ steps.params.outputs.should_deploy }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine parameters
+      id: params
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        EVENT="${{ inputs.event_name }}"
+
+        if [ "$EVENT" = "workflow_dispatch" ]; then
+          echo "🔧 Manual deployment triggered"
+          ENVIRONMENT="${{ inputs.environment }}"
+          VERSION="${{ inputs.version }}"
+
+          if [ -z "$VERSION" ]; then
+            echo "🔍 No version specified, finding latest release..."
+            VERSION=$(gh release view --json tagName --jq '.tagName' 2>/dev/null || echo "")
+            if [ -z "$VERSION" ]; then
+              echo "❌ No release found and no version specified"
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "✅ Using latest release: $VERSION"
+          fi
+
+          RUN_ID=$(gh run list \
+            --workflow="${{ inputs.artifact_workflow }}" \
+            --branch="$VERSION" \
+            --status=success \
+            --limit=1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "❌ No successful build found for $VERSION"
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "artifact_run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+
+          echo "✅ Environment: $ENVIRONMENT"
+          echo "✅ Version: $VERSION"
+          echo "✅ Artifact run: $RUN_ID"
+
+        elif [ "$EVENT" = "workflow_run" ]; then
+          CONCLUSION="${{ inputs.workflow_run_conclusion }}"
+
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "❌ Build was not successful ($CONCLUSION), skipping"
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          ENVIRONMENT="${{ inputs.environment }}"
+          BRANCH="${{ inputs.workflow_run_branch }}"
+          RUN_ID="${{ inputs.workflow_run_id }}"
+
+          if [ -z "$ENVIRONMENT" ]; then
+            echo "❌ No environment resolved for branch: $BRANCH"
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "version=$BRANCH" >> $GITHUB_OUTPUT
+          echo "artifact_name=${{ inputs.artifact_name }}" >> $GITHUB_OUTPUT
+          echo "artifact_run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+
+          echo "✅ Environment: $ENVIRONMENT"
+          echo "✅ Branch: $BRANCH"
+          echo "✅ Artifact run: $RUN_ID"
+
+        else
+          echo "❓ Unknown event type: $EVENT, skipping"
+          echo "should_deploy=false" >> $GITHUB_OUTPUT
+        fi

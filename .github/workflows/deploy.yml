@@ -52,7 +52,7 @@ jobs:
       should_deploy: ${{ steps.params.outputs.should_deploy }}
       artifact_name: ${{ steps.params.outputs.artifact_name }}
       artifact_run_id: ${{ steps.params.outputs.artifact_run_id }}
-      release_version: ${{ steps.params.outputs.release_version }}
+      version: ${{ steps.params.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,50 +68,15 @@ jobs:
 
       - name: Determine deployment parameters
         id: params
-        shell: bash
-        run: |
-          EVENT_NAME="${{ inputs.event_name }}"
-          
-          echo "🎯 Determining deployment parameters for event: $EVENT_NAME"
-          
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            # Manual deployment
-            echo "🔧 Manual deployment triggered"
-            echo "environment=${{ inputs.manual_environment }}" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "artifact_name=" >> $GITHUB_OUTPUT
-            echo "artifact_run_id=" >> $GITHUB_OUTPUT
-            echo "release_version=${{ inputs.manual_version }}" >> $GITHUB_OUTPUT
-            
-            echo "  Environment: ${{ inputs.manual_environment }}"
-            echo "  Version: ${{ inputs.manual_version || '(latest)' }}"
-            
-          elif [ "$EVENT_NAME" = "workflow_run" ]; then
-            # Automatic deployment from workflow_run
-            CONCLUSION="${{ inputs.workflow_run_conclusion }}"
-            
-            if [ "$CONCLUSION" = "success" ]; then
-              echo "🚀 Automatic deployment from successful workflow_run"
-              echo "environment=${{ steps.artifact.outputs.environment }}" >> $GITHUB_OUTPUT
-              echo "artifact_name=${{ steps.artifact.outputs.artifact_name }}" >> $GITHUB_OUTPUT
-              echo "should_deploy=true" >> $GITHUB_OUTPUT
-              echo "artifact_run_id=${{ inputs.workflow_run_id }}" >> $GITHUB_OUTPUT
-              echo "release_version=" >> $GITHUB_OUTPUT
-              
-              echo "  Environment: ${{ steps.artifact.outputs.environment }}"
-              echo "  Artifact: ${{ steps.artifact.outputs.artifact_name }}"
-              echo "  Run ID: ${{ inputs.workflow_run_id }}"
-            else
-              echo "❌ Workflow run was not successful ($CONCLUSION), skipping deployment"
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-            fi
-            
-          else
-            echo "❓ Unknown event type, skipping deployment"
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
-          fi
-          
-          echo "✅ Deployment parameters determined"
+        uses: meteor-digital/github-actions/.github/actions/determine-deploy-params@main
+        with:
+          event_name: ${{ inputs.event_name }}
+          environment: ${{ inputs.event_name == 'workflow_run' && steps.artifact.outputs.environment || inputs.manual_environment }}
+          version: ${{ inputs.manual_version }}
+          artifact_name: ${{ steps.artifact.outputs.artifact_name }}
+          workflow_run_id: ${{ inputs.workflow_run_id }}
+          workflow_run_branch: ${{ inputs.workflow_run_branch }}
+          workflow_run_conclusion: ${{ inputs.workflow_run_conclusion }}
 
   setup:
     name: 'Prepare deployment'
@@ -125,7 +90,7 @@ jobs:
       final_environment: ${{ needs.determine-params.outputs.environment }}
       final_artifact_name: ${{ needs.determine-params.outputs.artifact_name }}
       final_artifact_run_id: ${{ needs.determine-params.outputs.artifact_run_id }}
-      final_release_version: ${{ needs.determine-params.outputs.release_version }}
+      final_version: ${{ needs.determine-params.outputs.version }}
       final_branch: ${{ steps.setup.outputs.branch }}
     steps:
       - name: Checkout code
@@ -146,28 +111,10 @@ jobs:
       - name: Setup deployment variables
         id: setup
         shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Format date and set as output
           DEPLOY_DATE=$(date +'%Y%m%d.%H%M')
           echo "deploy_date=$DEPLOY_DATE" >> $GITHUB_OUTPUT
-          
-          # Determine the branch/tag to display
-          if [ -n "${{ inputs.workflow_run_branch }}" ]; then
-            # Automatic deployment - use the branch that triggered the build
-            BRANCH="${{ inputs.workflow_run_branch }}"
-          elif [ -n "${{ needs.determine-params.outputs.release_version }}" ]; then
-            # Manual deployment with specific version
-            BRANCH="${{ needs.determine-params.outputs.release_version }}"
-          elif [ "${{ inputs.event_name }}" = "workflow_dispatch" ]; then
-            # Manual deployment with latest release - get the latest tag
-            BRANCH=$(gh release view --json tagName --jq '.tagName' 2>/dev/null || echo "${{ github.ref_name }}")
-          else
-            # Fallback to current branch
-            BRANCH="${{ github.ref_name }}"
-          fi
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "branch=${{ needs.determine-params.outputs.version }}" >> $GITHUB_OUTPUT
 
   deploy:
     name: 'Deploy to ${{ needs.setup.outputs.final_environment }}'
@@ -199,7 +146,7 @@ jobs:
 
             **📋 Details:**
             - **Environment:** `${{ needs.setup.outputs.final_environment }}`
-            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_release_version || 'latest' }}
+            - **${{ needs.setup.outputs.final_artifact_name && 'Artifact' || 'Release' }}:** ${{ needs.setup.outputs.final_artifact_name || needs.setup.outputs.final_version || 'latest' }}
         
       - name: Download build artifact from workflow run
         if: needs.setup.outputs.final_artifact_name && needs.setup.outputs.final_artifact_run_id
@@ -214,7 +161,7 @@ jobs:
         if: inputs.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          gh release download ${{ needs.setup.outputs.final_release_version }} --pattern "*.tar.gz"
+          gh release download ${{ needs.setup.outputs.final_version }} --pattern "*.tar.gz"
           tar -xpf *.tar.gz
           rm *.tar.gz
         env:
