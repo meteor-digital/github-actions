@@ -103,7 +103,7 @@ runs:
         cat "$EXCLUDE_FILE"
 
     - name: Sync files to host
-      uses: burnett01/rsync-deployments@7.0.2
+      uses: burnett01/rsync-deployments@8.0.2
       with:
         switches: -azlp --exclude-from="${{ steps.excludes.outputs.exclude_file }}"
         path: ${{ inputs.build_path }}/
