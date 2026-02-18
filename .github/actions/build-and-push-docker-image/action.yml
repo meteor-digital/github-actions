@@ -1,0 +1,127 @@
+name: 'Build and Push Docker Image'
+description: 'Builds a Docker image from the project and pushes it to configured container registries'
+
+inputs:
+  config_file:
+    description: 'Path to pipeline configuration file'
+    required: false
+    default: '.github/pipeline-config.yml'
+  image_name:
+    description: 'Docker image name (without registry prefix)'
+    required: true
+  image_tag:
+    description: 'Docker image tag (defaults to git SHA)'
+    required: false
+    default: ''
+  registries:
+    description: 'JSON array of registry objects with keys: registry, username, password'
+    required: true
+  build_args:
+    description: 'Multi-line string of Docker build args (KEY=VALUE per line)'
+    required: false
+    default: ''
+  dockerfile:
+    description: 'Path to Dockerfile'
+    required: false
+    default: './Dockerfile'
+  context:
+    description: 'Docker build context path'
+    required: false
+    default: '.'
+
+outputs:
+  image_tags:
+    description: 'Comma-separated list of all pushed image tags'
+    value: ${{ steps.build-push.outputs.image_tags }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: '🐳 Set up Docker Buildx'
+      uses: docker/setup-buildx-action@v3
+
+    - name: '🔑 Log in to container registries'
+      shell: bash
+      run: |
+        #!/bin/bash
+        set -euo pipefail
+
+        echo "🔑 Logging in to container registries..."
+
+        REGISTRIES='${{ inputs.registries }}'
+        echo "$REGISTRIES" | jq -c '.[]' | while read -r entry; do
+          REGISTRY=$(echo "$entry" | jq -r '.registry')
+          USERNAME=$(echo "$entry" | jq -r '.username')
+          PASSWORD=$(echo "$entry" | jq -r '.password')
+
+          echo "  🔐 Logging in to $REGISTRY..."
+          echo "$PASSWORD" | docker login "$REGISTRY" --username "$USERNAME" --password-stdin
+          echo "  ✅ Logged in to $REGISTRY"
+        done
+
+        echo "✅ All registry logins completed"
+
+    - name: '🏷️ Determine image tags'
+      id: tags
+      shell: bash
+      run: |
+        #!/bin/bash
+        set -euo pipefail
+
+        IMAGE_NAME="${{ inputs.image_name }}"
+        IMAGE_TAG="${{ inputs.image_tag }}"
+        
+        # Default tag to git SHA if not provided
+        if [ -z "$IMAGE_TAG" ]; then
+          IMAGE_TAG="${{ github.sha }}"
+        fi
+
+        echo "🏷️ Determining image tags..."
+
+        REGISTRIES='${{ inputs.registries }}'
+        ALL_TAGS=""
+
+        while read -r entry; do
+          REGISTRY=$(echo "$entry" | jq -r '.registry')
+          # Add both the specific tag and latest
+          TAG_SPECIFIC="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          TAG_LATEST="${REGISTRY}/${IMAGE_NAME}:latest"
+          
+          if [ -n "$ALL_TAGS" ]; then
+            ALL_TAGS="${ALL_TAGS}
+        ${TAG_SPECIFIC}
+        ${TAG_LATEST}"
+          else
+            ALL_TAGS="${TAG_SPECIFIC}
+        ${TAG_LATEST}"
+          fi
+        done < <(echo "$REGISTRIES" | jq -c '.[]')
+
+        echo "tags<<EOF" >> $GITHUB_OUTPUT
+        echo "$ALL_TAGS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        echo "📋 Tags to build:"
+        echo "$ALL_TAGS" | while read -r tag; do
+          echo "  - $tag"
+        done
+
+    - name: '🐳 Build and push Docker image'
+      id: build-push
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: true
+        provenance: false
+        build-args: ${{ inputs.build_args }}
+        tags: ${{ steps.tags.outputs.tags }}
+
+    - name: '📊 Image build summary'
+      shell: bash
+      run: |
+        echo "✅ Docker image built and pushed successfully"
+        echo "📋 Pushed tags:"
+        echo '${{ steps.tags.outputs.tags }}' | while read -r tag; do
+          [ -n "$tag" ] && echo "  - $tag"
+        done
