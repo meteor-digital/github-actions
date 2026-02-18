@@ -379,7 +379,6 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_DATABASE: shopware_test
           MYSQL_ROOT_PASSWORD: shopware
           MYSQL_USER: shopware
           MYSQL_PASSWORD: shopware
@@ -419,10 +418,10 @@ jobs:
             # Handle DATABASE_URL based on version
             if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
               echo "    -> Using DATABASE_URL without '_test' suffix for older Shopware version."
-              echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware' >> .env.test.local
+              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware' >> .env.test.local
             else
               echo "    -> Using DATABASE_URL with '_test' suffix."
-              echo 'DATABASE_URL=mysql://shopware:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
+              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
             fi
 
             # Handle JWT key generation for Shopware < 6.7
