@@ -38,6 +38,11 @@ on:
         description: 'SSH private key for deployment'
         required: true
 
+# Allow deployment workflow to download artifacts from other workflow runs
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   determine-params:
     name: 'Determine deployment parameters'

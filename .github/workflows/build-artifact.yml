@@ -19,6 +19,11 @@ on:
         description: 'Additional test environment variables'
         required: false
 
+# Allow build workflow to upload artifacts
+permissions:
+  actions: write
+  contents: read
+
 jobs:
   quality-checks:
     name: 'Quality checks'
