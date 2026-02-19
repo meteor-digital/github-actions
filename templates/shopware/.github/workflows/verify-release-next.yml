@@ -18,6 +18,10 @@ on:
         required: false
         default: 'release/next'
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   run:
     uses: meteor-digital/github-actions/.github/workflows/verify-release-next.yml@main

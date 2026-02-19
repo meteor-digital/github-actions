@@ -23,6 +23,10 @@ on:
         description: 'Additional test environment variables'
         required: false
 
+permissions:
+  contents: read
+  statuses: write
+
 # Prevent multiple verify-release-next workflows from running simultaneously
 concurrency:
   group: verify-release-next-${{ inputs.branch_name }}
