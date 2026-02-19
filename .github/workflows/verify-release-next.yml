@@ -99,6 +99,7 @@ jobs:
     if: needs.check-commit-changes.outputs.should_validate == 'true'
     uses: meteor-digital/github-actions/.github/workflows/quality-checks.yml@main
     with:
+      ref: ${{ inputs.branch_name }}
       config_path: ${{ inputs.config_path }}
       check_changed_files_only: false
       run_slow_testsuites: true
