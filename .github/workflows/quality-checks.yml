@@ -309,7 +309,14 @@ jobs:
 
           if [ "${{ inputs.check_changed_files_only }}" = "true" ] && [ "${{ steps.changed-files.outputs.any_changed }}" = "true" ]; then
             echo "  Analyzing changed files only: ${{ steps.changed-files.outputs.all_changed_files }}"
-            php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration="$CONFIG_FILE" ${{ steps.changed-files.outputs.all_changed_files }}
+            OUTPUT=$(php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration="$CONFIG_FILE" ${{ steps.changed-files.outputs.all_changed_files }} 2>&1) && echo "$OUTPUT" || {
+              if echo "$OUTPUT" | grep -q "No files found to analyse"; then
+                echo "  All changed files are excluded by PHPStan config, skipping."
+              else
+                echo "$OUTPUT"
+                exit 1
+              fi
+            }
           else
             echo "  Analyzing all files"
             php ${{ needs.setup.outputs.phpstan_bin }} analyse --configuration="$CONFIG_FILE"
