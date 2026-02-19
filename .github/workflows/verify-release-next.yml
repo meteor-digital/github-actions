@@ -75,8 +75,15 @@ jobs:
           STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/commits/$COMMIT_SHA/status")
           
-          # Check if we have a successful verify-release-next status
-          SUCCESS_COUNT=$(echo "$STATUS_RESPONSE" | jq -r '.statuses[] | select(.context == "verify-release-next" and .state == "success") | .context' | wc -l)
+          # Check if the API response is valid
+          if echo "$STATUS_RESPONSE" | jq -e '.statuses' >/dev/null 2>&1; then
+            # Check if we have a successful verify-release-next status
+            SUCCESS_COUNT=$(echo "$STATUS_RESPONSE" | jq -r '.statuses[] | select(.context == "verify-release-next" and .state == "success") | .context' | wc -l)
+          else
+            echo "❌ Failed to get commit status from GitHub API"
+            echo "Response: $STATUS_RESPONSE"
+            SUCCESS_COUNT=0
+          fi
           
           if [ "$SUCCESS_COUNT" -gt 0 ]; then
             echo "✅ Commit already validated successfully, skipping"
