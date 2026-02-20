@@ -304,7 +304,7 @@ runs:
         bin/console theme:compile --active-only
         bin/console asset:install
         touch install.lock"
-            MIGRATION_COMMAND="bin/console database:migrate --all ${{ steps.parse_ci.outputs.project_name }}"
+            MIGRATION_COMMAND="bin/console database:migrate --all && bin/console database:migrate --all ${{ steps.parse_ci.outputs.project_name }}"
             MAINTENANCE_ENABLE_CMD="bin/console sales-channel:maintenance:enable --all"
             MAINTENANCE_DISABLE_CMD="bin/console sales-channel:maintenance:disable --all"
             ;;
