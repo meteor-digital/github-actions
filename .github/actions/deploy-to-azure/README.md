@@ -70,103 +70,45 @@ configuration: {
 - ✅ **Multiple revision mode** allows traffic splitting and blue-green deployments
 - The action will manage traffic switching between revisions automatically
 
-## Deployment Process
+## How It Works
 
-The action follows this blue-green deployment process:
-
-1. **Project Detection**: Auto-detect project type and load framework defaults
-2. **Configuration Parsing**: Read deployment configuration for framework commands
-3. **Revision Discovery**: Identify new (just deployed) and old (active) revisions
-4. **Pre-deployment Commands**: Execute configured pre-deployment commands on new revision
-5. **Maintenance Mode**: Enable maintenance mode on new revision
-6. **Database Migration**: Run framework-specific migrations on new revision
-7. **Post-deployment Commands**: Execute configured post-deployment commands on new revision
-8. **Traffic Switch**: Switch 100% traffic from old to new revision
-9. **Deactivate Old Revision**: Stop old revision containers
-10. **Maintenance Mode**: Disable maintenance mode on new revision
-11. **Cleanup**: Remove old inactive revisions (keeps last 3)
-12. **Failure Handling**: On failure, disable maintenance and clear cache
+```mermaid
+flowchart TD
+    Start([Deploy to Azure]) --> Detect[Detect Project Type]
+    Detect --> Config[Load<br/>Framework Commands]
+    Config --> Discover[Discover Revisions]
+    Discover --> PreDeploy[Pre-deployment<br/>Commands]
+    PreDeploy --> Maintenance[Enable Maintenance Mode]
+    Maintenance --> Migrate[Run Database Migrations]
+    Migrate --> PostDeploy[Post-deployment<br/>Commands]
+    PostDeploy --> Switch[Switch Traffic<br/>to New Revision]
+    Switch --> Deactivate[Deactivate<br/>Old Revision]
+    Deactivate --> DisableMaint[Disable<br/>Maintenance Mode]
+    DisableMaint --> Cleanup[Cleanup Old Revisions]
+    Cleanup --> Success([Deployment Complete])
+    
+    Migrate -.->|On Failure| FailMaint[Disable Maintenance]
+    FailMaint --> FailCache[Clear Cache]
+    FailCache --> Failed([Deployment Failed])
+    
+    style Start fill:#e1f5e1
+    style Success fill:#e1f5e1
+    style Failed fill:#ffe1e1
+    style Switch fill:#e1e5ff
+    style Deactivate fill:#e1e5ff
+```
 
 ## Framework Support
 
-### Shopware
-- **Migration Command**: `bin/console database:migrate --all && bin/console database:migrate --all {ProjectName}`
-- **Maintenance Enable**: `bin/console sales-channel:maintenance:enable --all`
-- **Maintenance Disable**: `bin/console sales-channel:maintenance:disable --all`
-- **Pre-deploy**: `bin/console cache:warmup --no-optional-warmers`
-- **Post-deploy**: Theme compilation, asset installation
-
-### Laravel
-- **Migration Command**: `php artisan migrate --force`
-- **Maintenance Enable**: `php artisan down`
-- **Maintenance Disable**: `php artisan up`
-- **Post-deploy**: Config cache, route cache, view cache
-
-### Symfony
-- **Migration Command**: `bin/console doctrine:migrations:migrate --no-interaction`
-- **Maintenance Enable**: Custom maintenance mode command
-- **Maintenance Disable**: Custom maintenance mode command
-- **Post-deploy**: Cache warmup
-
-## Configuration
-
-The action uses the same configuration system as `deploy-to-host`:
-
-```yaml
-# .github/pipeline-config.yml
-# Framework-specific commands are automatically loaded
-# No environment-specific configuration needed for Azure
-```
-
-Commands are determined by project type detection. No Azure-specific configuration is required in the config file.
-
-## Revision Management
-
-- **New Revision**: Created by Bicep deployment with new Docker image
-- **Old Revision**: Currently active revision receiving traffic
-- **Traffic Switch**: Atomic switch from old (100%) to new (100%)
-- **Cleanup**: Keeps last 3 inactive revisions for rollback capability
+Auto-detects **Shopware**, **Laravel**, or **Symfony** and uses framework-specific commands from `.github/pipeline-config.yml`. No Azure-specific configuration needed.
 
 ## Rollback
 
-To rollback to a previous revision:
-
+Reactivate and switch traffic to a previous revision using Azure CLI:
 ```bash
-# List revisions
-az containerapp revision list \
-  --name <app-name> \
-  --resource-group <resource-group>
-
-# Activate old revision
-az containerapp revision activate \
-  --name <app-name> \
-  --resource-group <resource-group> \
-  --revision <old-revision-name>
-
-# Switch traffic
-az containerapp ingress traffic set \
-  --name <app-name> \
-  --resource-group <resource-group> \
-  --revision-weight <old-revision-name>=100
+az containerapp revision activate --name <app> --resource-group <rg> --revision <old-revision>
+az containerapp ingress traffic set --name <app> --resource-group <rg> --revision-weight <old-revision>=100
 ```
-
-## Error Handling
-
-The action includes comprehensive error handling:
-
-- **Revision Discovery Failures**: Validates revisions exist before proceeding
-- **Command Execution Failures**: Reports failures with detailed output
-- **Traffic Switch Failures**: Maintains old revision if switch fails
-- **Cleanup Failures**: Continues deployment even if cleanup fails
-
-## Failure Recovery
-
-On deployment failure, the action automatically:
-
-1. Disables maintenance mode on new revision
-2. Clears cache for Shopware/Symfony projects
-3. Reports failure status
-4. Does NOT rollback traffic (manual rollback required)
 
 ## Example
 

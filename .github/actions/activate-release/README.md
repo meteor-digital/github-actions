@@ -1,19 +1,12 @@
 # Activate Release Action
 
-Activates a new release with atomic symlink switching and Sentry integration following proven patterns.
-
-## Features
-
-- **Atomic Deployment**: Zero-downtime release activation
-- **Proven Pattern**: Follows battle-tested symlink switching pattern
-- **Sentry Integration**: Updates Sentry release environment variable
-- **Safe Operations**: Handles missing current symlink gracefully
+Activates a new release with atomic symlink switching and Sentry integration.
 
 ## Usage
 
 ```yaml
 - name: Activate new release
-  uses: ./actions/activate-release
+  uses: meteor-digital/github-actions/.github/actions/activate-release@main
   with:
     host: 'example.com'
     ssh_port: '22'
@@ -24,71 +17,21 @@ Activates a new release with atomic symlink switching and Sentry integration fol
 
 ## Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `host` | Target host | Yes | - |
-| `ssh_port` | SSH port | Yes | - |
-| `ssh_user` | SSH username | Yes | - |
-| `deploy_path` | Deployment path | Yes | - |
-| `deploy_date` | Deployment date identifier | Yes | - |
+| Input | Description | Required |
+|-------|-------------|----------|
+| `host` | Target host | Yes |
+| `ssh_port` | SSH port | Yes |
+| `ssh_user` | SSH username | Yes |
+| `deploy_path` | Deployment path | Yes |
+| `deploy_date` | Deployment date identifier (YYYYMMDD.HHMM) | Yes |
 
-## What It Does
+## How It Works
 
-### 1. Atomic Symlink Switch
-Following the proven pattern:
+1. **Atomic symlink switch**: Updates `current` symlink to point to new release directory
+2. **Sentry integration**: Updates `SENTRY_RELEASE` in `.env.local` to `release-{deploy_date}`
+3. **Zero downtime**: Symlink switch is atomic, no service interruption
 
-```bash
-# Remove existing current symlink (if exists)
-[ -d /var/www/app/current ] && unlink /var/www/app/current || exit 0
+## Related Actions
 
-# Create new symlink to release
-ln -s /var/www/app/releases/20231215.1430/ /var/www/app/current
-```
-
-### 2. Sentry Release Integration
-Updates the Sentry release environment variable:
-
-```bash
-sed -i --in-place --follow-symlinks \
-  "s/SENTRY_RELEASE=.*/SENTRY_RELEASE='release-20231215.1430'/g" \
-  /var/www/app/current/.env.local
-```
-
-## Directory Structure
-
-Before activation:
-```
-/var/www/app/
-├── releases/
-│   ├── 20231214.1200/  (old release)
-│   └── 20231215.1430/  (new release)
-└── current -> releases/20231214.1200
-```
-
-After activation:
-```
-/var/www/app/
-├── releases/
-│   ├── 20231214.1200/  (old release)
-│   └── 20231215.1430/  (new release)
-└── current -> releases/20231215.1430  (updated)
-```
-
-## Sentry Integration
-
-The Sentry release format follows the pattern:
-- Format: `release-{deploy_date}`
-- Example: `release-20231215.1430`
-- Updated in `.env.local` file
-
-## Error Handling
-
-- **Missing Current**: Gracefully handles missing current symlink
-- **Atomic Operation**: Symlink switch is atomic (no downtime)
-- **Sentry Failure**: Continues deployment even if Sentry update fails
-
-## Security
-
-- Requires SSH agent to be configured
-- Uses in-place sed editing with symlink following
-- Safe symlink operations with error handling
+- **`deploy-to-host`**: Uses this action to activate releases
+- **`cleanup-releases`**: Cleans up old releases after activation

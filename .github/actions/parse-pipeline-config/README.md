@@ -86,15 +86,13 @@ This action parses unified CI/CD pipeline configuration from a YAML file, suppor
 The action expects a unified YAML configuration file with the following structure:
 
 ```yaml
-# Unified CI/CD Configuration
 project:
   name: "my-project"
-  # type: "shopware"  # Auto-detected if not specified
 
 runtime:
   php_version: "8.1"  # Required
-  #node_version: "18"  # Optional, defaults to 18
-  # php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache"  # Optional
+  node_version: "18"  # Optional, defaults to 18
+  php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache"  # Optional
 
 quality_checks:
   enabled_tools:
@@ -104,91 +102,62 @@ quality_checks:
     - "rector"
     - "phpunit"
     - "composer-validate"
-    - "phpunuhi"
-  
-  # Override default binary paths (optional)
-  tool_binaries:
+  tool_binaries:  # Optional overrides
     php-cs-fixer: "./vendor/bin/php-cs-fixer"
-    psalm: "./vendor/bin/psalm"
 
 build:
+  build_commands:
+    - "npm run build"
+    - "composer install --no-dev"
   exclude_patterns: |
     *.git*
     node_modules/*
     tests/*
-    .env*
-    *.log
-    *.cache
-  build_commands:
-    - "npm run build"
-    - "composer install --no-dev --optimize-autoloader"
-
-  # Build artifact configuration
   artifacts:
     retention_days: 1
 
 notifications:
   notification_webhook: "https://hooks.example.com/webhook"
 
+# Deployment configuration (per environment)
+environments:
+  test:
+    host: "test.example.com"
+    path: "/var/www/test"
+    messenger_worker_id: "1"  # Optional, Shopware/Symfony
+  prod:
+    host: "prod.example.com"
+    path: "/var/www/prod"
+
+hosting:
+  provider: "level27"  # level27, byte, hipex, hostedpower, forge, generic
+  ssh_user: "deploy"
+  ssh_port: 22
+  php_service: "php8.1-fpm"
+
+# Optional: Override framework defaults
 deployment:
-  environments:
-    test:
-      host: "test.example.com"
-      path: "/var/www/test"
-      ssh_user: "deploy"  # Can be environment-specific
-      messenger_worker_id: "1"  # Optional, Shopware/Symfony specific
-    prod:
-      host: "prod.example.com"
-      path: "/var/www/prod"
-      ssh_user: "deploy"
-      messenger_worker_id: "2"
-  
-  hosting:
-    provider: "level27"  # level27, byte, hipex, hostedpower, forge, generic
-    ssh_user: "deploy"  # Global default, can be overridden per environment
-    php_service: "php8.1-fpm"
-  
-  # Optional: Override framework defaults
   shared_folders:
     - "custom/shared/folder"
-  
   commands:
     pre_deploy:
-      - "custom-pre-deploy-command"
+      - "custom-command"
     post_deploy:
-      - "custom-post-deploy-command"
-  
+      - "custom-command"
   cleanup:
-    keep_releases: 3  # Number of releases to keep
+    keep_releases: 3
 ```
 
 ## Framework Defaults
 
-The action automatically applies framework-specific defaults:
-
-### Shopware
-- **Shared folders**: `files`, `public/media`, `public/sitemap`, `public/thumbnail`, `config/jwt`, `var/log`
-- **Pre-deploy**: `bin/console cache:warmup --no-optional-warmers`
-- **Post-deploy**: `bin/console theme:dump --no-interaction`, `bin/console theme:compile --active-only`, `bin/console asset:install`
-- **Migration command**: `bin/console database:migrate --all`
-- **Maintenance enable**: `bin/console sales-channel:maintenance:enable --all`
-- **Maintenance disable**: `bin/console sales-channel:maintenance:disable --all`
-
-### Laravel
-- **Shared folders**: `storage`, `bootstrap/cache`
-- **Pre-deploy**: (none)
-- **Post-deploy**: `php artisan config:cache`, `php artisan route:cache`, `php artisan view:cache`, `php artisan optimize`
-- **Migration command**: `php artisan migrate --force`
-- **Maintenance enable**: `php artisan down`
-- **Maintenance disable**: `php artisan up`
-
-### Symfony
-- **Shared folders**: `var`, `public/uploads`
-- **Pre-deploy**: `bin/console cache:warmup --no-optional-warmers`
-- **Post-deploy**: `bin/console doctrine:migrations:migrate --no-interaction`
-- **Migration command**: `bin/console doctrine:migrations:migrate --no-interaction`
-- **Maintenance enable**: `touch maintenance.html`
-- **Maintenance disable**: `rm -f maintenance.html`
+| Setting | Shopware | Laravel | Symfony |
+|---------|----------|---------|---------|
+| **Shared Folders** | `files`, `public/media`, `config/jwt`, `var/log` | `storage`, `bootstrap/cache` | `var`, `public/uploads` |
+| **Pre-deploy** | `bin/console cache:warmup` | _(none)_ | `bin/console cache:warmup` |
+| **Post-deploy** | `bin/console theme:dump`<br/>`bin/console theme:compile`<br/>`bin/console asset:install` | `php artisan config:cache`<br/>`php artisan route:cache`<br/>`php artisan view:cache` | `bin/console doctrine:migrations:migrate` |
+| **Migration** | `bin/console database:migrate --all` | `php artisan migrate --force` | `bin/console doctrine:migrations:migrate` |
+| **Maintenance Enable** | `bin/console sales-channel:maintenance:enable --all` | `php artisan down` | `touch maintenance.html` |
+| **Maintenance Disable** | `bin/console sales-channel:maintenance:disable --all` | `php artisan up` | `rm -f maintenance.html` |
 
 ## Configuration Validation
 
@@ -203,12 +172,13 @@ The action performs comprehensive validation:
 
 ## Quality Tools Integration
 
-The action supports comprehensive quality tool configuration:
+**Default tools** (enabled if not specified):
+- `php-cs-fixer`, `psalm`, `phpstan`, `rector`, `phpunit`, `composer-validate`
 
-- **Default tools**: `php-cs-fixer`, `psalm`, `phpstan`, `rector`, `phpunit`, `composer-validate`
-- **Optional tools**: `phpunuhi` for translation validation
-- **Binary path overrides**: Customize paths to tool binaries (useful for project-specific tool locations)
-- **Tool selection**: Enable/disable specific tools per project
+**Optional tools** (add to `enabled_tools` to use):
+- `phpunuhi` - Translation validation
+
+**Binary path overrides**: Customize paths via `tool_binaries` (e.g., for project-specific tool locations)
 
 Example quality configuration:
 

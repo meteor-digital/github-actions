@@ -1,19 +1,12 @@
 # Create Symlinks Action
 
-Creates symlinks for shared folders following proven deployment patterns.
-
-## Features
-
-- **Shared Folder Management**: Creates symlinks to shared directories
-- **Proven Pattern**: Follows battle-tested symlink creation patterns
-- **Environment File**: Automatically creates .env.local symlink
-- **Safe Operations**: Removes existing directories before creating symlinks
+Creates symlinks for shared folders (files, media, logs, etc.) and environment configuration.
 
 ## Usage
 
 ```yaml
 - name: Create shared folder symlinks
-  uses: ./actions/create-symlinks
+  uses: meteor-digital/github-actions/.github/actions/create-symlinks@main
   with:
     host: 'example.com'
     ssh_port: '22'
@@ -23,80 +16,25 @@ Creates symlinks for shared folders following proven deployment patterns.
     shared_folders: |
       files
       public/media
-      public/sitemap
       var/log
 ```
 
 ## Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `host` | Target host | Yes | - |
-| `ssh_port` | SSH port | Yes | - |
-| `ssh_user` | SSH username | Yes | - |
-| `deploy_path` | Deployment path | Yes | - |
-| `release_dir` | Release directory | Yes | - |
-| `shared_folders` | Shared folders list (newline separated) | Yes | - |
+| Input | Description | Required |
+|-------|-------------|----------|
+| `host` | Target host | Yes |
+| `ssh_port` | SSH port | Yes |
+| `ssh_user` | SSH username | Yes |
+| `deploy_path` | Deployment path | Yes |
+| `release_dir` | Release directory (relative to deploy_path) | Yes |
+| `shared_folders` | Shared folders list (newline separated) | Yes |
 
-## What It Does
+## How It Works
 
-1. **Environment File Symlink**
-   ```bash
-   ln -sf /var/www/app/shared/.env.local .env.local
-   ```
+1. Creates `.env.local` symlink from `shared/.env.local`
+2. For each shared folder: removes directory in release, creates symlink to `shared/{folder}`
 
-2. **Shared Folder Symlinks**
-   - Removes existing directories in release
-   - Creates symlinks to shared directories
+## Related Actions
 
-## Directory Structure
-
-```
-/var/www/app/
-├── shared/
-│   ├── .env.local
-│   ├── files/
-│   ├── public/media/
-│   ├── public/sitemap/
-│   └── var/log/
-├── releases/
-│   └── 20231215.1430/
-│       ├── .env.local -> ../shared/.env.local
-│       ├── files -> ../shared/files
-│       ├── public/media -> ../shared/public/media
-│       └── var/log -> ../shared/var/log
-└── current -> releases/20231215.1430
-```
-
-## Framework-Specific Folders
-
-### Shopware (Default)
-```yaml
-shared_folders: |
-  files
-  public/media
-  public/sitemap
-  public/thumbnail
-  config/jwt
-  var/log
-```
-
-### Laravel
-```yaml
-shared_folders: |
-  storage
-  bootstrap/cache
-```
-
-### Symfony
-```yaml
-shared_folders: |
-  var
-  public/uploads
-```
-
-## Security
-
-- Requires SSH agent to be configured
-- Uses relative symlinks for portability
-- Safe directory removal before symlink creation
+- **`deploy-to-host`**: Uses this action to set up shared folders

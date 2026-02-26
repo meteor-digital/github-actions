@@ -1,15 +1,6 @@
 # Determine Artifact Name Action
 
-This action determines the appropriate artifact name and target environment based on the Git reference (branch or tag) and project configuration.
-
-## Description
-
-The action analyzes the Git reference to determine:
-- **Artifact name**: A standardized name for build artifacts
-- **Target environment**: The deployment environment (test, acc, prod)
-- **Version**: Extracted version number (for release branches and tags)
-
-This ensures consistent artifact naming across all builds and deployments.
+Determines artifact name and target environment based on Git reference (branch/tag).
 
 ## Inputs
 
@@ -29,120 +20,28 @@ This ensures consistent artifact naming across all builds and deployments.
 
 ## Artifact Naming Logic
 
-The action follows these rules for artifact naming:
-
-### 1. Tag Builds (Production)
-- **Pattern**: `{project-name}-prod-build-{tag}`
-- **Environment**: `prod`
-- **Version**: Tag name
-- **Example**: `my-project-prod-build-1.2.3`
-
-### 2. Release Branch Builds (Acceptance)
-- **Pattern**: `release/{version}` → `{project-name}-acc-build-{version}`
-- **Environment**: `acc`
-- **Version**: Extracted from branch name
-- **Example**: `release/1.2.3` → `my-project-acc-build-1.2.3`
-
-### 3. Test Branch Builds
-- **Pattern**: `test/*` → `{project-name}-test-build`
-- **Environment**: `test`
-- **Version**: Empty
-- **Example**: `test/feature-xyz` → `my-project-test-build`
-
-### 4. Other Branches
-- **Pattern**: `{project-name}-build-{sanitized-branch-name}`
-- **Environment**: Empty
-- **Version**: Empty
-- **Example**: `feature/new-ui` → `my-project-build-feature-new-ui`
-
-## Usage
-
-### Basic Usage
-
-```yaml
-- name: Determine artifact name
-  id: artifact
-  uses: meteor-digital/github-actions/.github/actions/determine-artifact-name@main
-  with:
-    ref_name: ${{ github.ref_name }}
-    ref_type: ${{ github.ref_type }}
-
-- name: Use artifact name
-  run: |
-    echo "Artifact: ${{ steps.artifact.outputs.artifact_name }}"
-    echo "Environment: ${{ steps.artifact.outputs.environment }}"
-    echo "Version: ${{ steps.artifact.outputs.version }}"
+```mermaid
+flowchart TD
+    Start([Git Reference]) --> TagCheck{Tag?}
+    TagCheck -->|Yes| Tag["{project}-prod-build-{tag}<br/>env: prod<br/>version: {tag}"]
+    TagCheck -->|No| ReleaseCheck{release/* branch?}
+    ReleaseCheck -->|Yes| Release["{project}-acc-build-{version}<br/>env: acc<br/>version: extracted"]
+    ReleaseCheck -->|No| TestCheck{test/* branch?}
+    TestCheck -->|Yes| Test["{project}-test-build<br/>env: test<br/>version: empty"]
+    TestCheck -->|No| Other["{project}-build-{branch}<br/>env: empty<br/>version: empty"]
+    
+    Tag --> End([Artifact Name])
+    Release --> End
+    Test --> End
+    Other --> End
+    
+    style Tag fill:#e1f5e1
+    style Release fill:#fff4e1
+    style Test fill:#e1e5ff
+    style Other fill:#f0f0f0
 ```
 
-### With Custom Configuration
-
-```yaml
-- name: Determine artifact name
-  id: artifact
-  uses: meteor-digital/github-actions/.github/actions/determine-artifact-name@main
-  with:
-    config_file: 'custom/pipeline-config.yml'
-    ref_name: ${{ github.ref_name }}
-    ref_type: ${{ github.ref_type }}
-```
-
-### In Build Workflow
-
-```yaml
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Determine artifact name
-        id: artifact
-        uses: meteor-digital/github-actions/.github/actions/determine-artifact-name@main
-        with:
-          ref_name: ${{ github.ref_name }}
-          ref_type: ${{ github.ref_type }}
-      
-      - name: Build project
-        run: |
-          # Build commands here
-          
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.artifact.outputs.artifact_name }}
-          path: build/
-```
-
-### In Deployment Workflow
-
-```yaml
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Determine artifact name
-        id: artifact
-        uses: meteor-digital/github-actions/.github/actions/determine-artifact-name@main
-        with:
-          ref_name: ${{ github.event.workflow_run.head_branch }}
-          ref_type: 'branch'
-      
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ steps.artifact.outputs.artifact_name }}
-          path: ./artifact
-      
-      - name: Deploy to environment
-        if: steps.artifact.outputs.environment != ''
-        run: |
-          echo "Deploying to ${{ steps.artifact.outputs.environment }}"
-          # Deployment commands here
-```
-
-## Examples
-
-### Example Outputs for Different References
+**Examples:**
 
 | Git Reference | Artifact Name | Environment | Version |
 |---------------|---------------|-------------|---------|
@@ -150,43 +49,34 @@ jobs:
 | `release/1.2.3` | `my-project-acc-build-1.2.3` | `acc` | `1.2.3` |
 | `test/feature-x` | `my-project-test-build` | `test` | `` |
 | `feature/new-ui` | `my-project-build-feature-new-ui` | `` | `` |
-| `main` | `my-project-build-main` | `` | `` |
 
-### Project Configuration
-
-The action reads the project name from your pipeline configuration:
+## Usage
 
 ```yaml
-# .github/pipeline-config.yml
+- name: Determine artifact name
+  id: artifact
+  uses: meteor-digital/github-actions/.github/actions/determine-artifact-name@main
+  with:
+    ref_name: ${{ github.ref_name }}
+    ref_type: ${{ github.ref_type }}
+
+# Upload artifact
+- uses: actions/upload-artifact@v4
+  with:
+    name: ${{ steps.artifact.outputs.artifact_name }}
+    path: build/
+```
+
+## Configuration
+
+Project name is read from `.github/pipeline-config.yml`:
+
+```yaml
 project:
   name: "my-awesome-project"  # Used in artifact naming
 ```
 
-## Integration with Other Actions
+## Related Actions
 
-This action is commonly used with:
-
-- **Build workflows**: To name build artifacts consistently
-- **Deployment workflows**: To identify which artifact to deploy
-- **Release workflows**: To determine version numbers and environments
-
-## Branch Naming Conventions
-
-For optimal results, follow these branch naming conventions:
-
-- **Production releases**: Use semantic version tags (`1.2.3`, `2.0.0`)
-- **Acceptance testing**: Use release branches (`release/1.2.3`)
-- **Test environments**: Use test branches (`test/feature-name`, `test/bugfix-123`)
-- **Development**: Use descriptive branch names (`feature/new-login`, `bugfix/header-issue`)
-
-## Dependencies
-
-This action depends on:
-- `parse-pipeline-config` action for reading project configuration
-- Bash shell for string processing and pattern matching
-
-## Security Considerations
-
-- The action only reads configuration files and Git references
-- No sensitive information is exposed in outputs
-- Artifact names are safe for use in file systems and URLs
+- **`determine-deploy-params`**: Uses artifact names to resolve deployment parameters
+- **`parse-pipeline-config`**: Reads project configuration
