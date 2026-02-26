@@ -48,7 +48,7 @@ quality_checks:
   #     command: "composer audit"
 
 notifications:
-  notification_webhook: "https://cronos.webhook.office.com/webhookb2/KEY1/IncomingWebhook/KEY2"
+  notification_webhook: "https://your-org.webhook.office.com/webhookb2/YOUR-WEBHOOK-ID/IncomingWebhook/YOUR-WEBHOOK-SECRET"
 
 deployment:
   environments:

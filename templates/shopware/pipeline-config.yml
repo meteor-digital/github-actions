@@ -11,7 +11,7 @@ runtime:
   # php_extensions: "mbstring, intl, gd, xml, zip, curl, opcache, redis, mysql"
   
 notifications:
-  notification_webhook: "https://cronos.webhook.office.com/webhookb2/3f825001-1c2d-4342-95be-6bcd69e61373@49c3d703-3579-47bf-a888-7c913fbdced9/IncomingWebhook/2bc777eccdcb4609a2ce59e4b169eb86/1260a310-a7bc-49e0-85f0-83993daa24d3/V2nohSwxgbdodaX6_t-2a8COguzwAthQ7QiqzJUb-20_Q1"
+  notification_webhook: "https://your-org.webhook.office.com/webhookb2/YOUR-WEBHOOK-ID/IncomingWebhook/YOUR-WEBHOOK-SECRET"
 
 quality_checks:
   enabled_tools:
