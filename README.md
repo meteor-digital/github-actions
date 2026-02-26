@@ -78,16 +78,32 @@ All reusable workflows are located in [`.github/workflows/`](.github/workflows/)
 
 All composite actions are located in [`.github/actions/`](.github/actions/). These provide reusable functionality used by the workflows:
 
-**Main Actions** (commonly used directly):
+**Core Actions** (commonly used directly):
 - **[setup-environment](.github/actions/setup-environment/)** - Sets up PHP, Node.js, and installs dependencies with caching
 - **[build-project](.github/actions/build-project/)** - Builds projects using framework-specific commands and configurations
-- **[deploy-to-host](.github/actions/deploy-to-host/)** - Deploys built projects to target environments with atomic deployment
 - **[notify-teams](.github/actions/notify-teams/)** - Sends notifications to Teams/Slack channels
 
-**Supporting Actions** (used internally by workflows):
+**Host Deployment** (traditional server deployments):
+- **[deploy-to-host](.github/actions/deploy-to-host/)** - Complete deployment orchestration with atomic symlink switching
+- **[run-commands-on-host](.github/actions/run-commands-on-host/)** - Executes commands on remote host via SSH
+- **[activate-release](.github/actions/activate-release/)** - Activates new release using symlink switching
+- **[create-symlinks](.github/actions/create-symlinks/)** - Creates symlinks for shared folders
+- **[manage-services](.github/actions/manage-services/)** - Manages PHP-FPM and worker services
+- **[cleanup-releases](.github/actions/cleanup-releases/)** - Cleans up old releases on host
+
+**Azure Deployment** (container-based deployments):
+- **[deploy-to-azure](.github/actions/deploy-to-azure/)** - Complete deployment orchestration with blue-green revision strategy
+- **[build-and-push-docker-image](.github/actions/build-and-push-docker-image/)** - Builds and pushes Docker images to registries
+- **[discover-azure-revisions](.github/actions/discover-azure-revisions/)** - Discovers new and old Azure Container App revisions
+- **[run-command-on-azure-container](.github/actions/run-command-on-azure-container/)** - Executes commands on specific Azure revision
+- **[switch-azure-traffic](.github/actions/switch-azure-traffic/)** - Switches traffic between Azure revisions (blue-green)
+- **[cleanup-azure-revisions](.github/actions/cleanup-azure-revisions/)** - Cleans up old inactive Azure revisions
+
+**Supporting Actions** (used internally):
 - **[parse-pipeline-config](.github/actions/parse-pipeline-config/)** - Parses unified pipeline configuration
 - **[detect-project-type](.github/actions/detect-project-type/)** - Auto-detects project framework type
 - **[determine-artifact-name](.github/actions/determine-artifact-name/)** - Determines artifact names based on Git references
+- **[composer-setup](.github/actions/composer-setup/)** - Sets up Composer with authentication and caching
 
 For a complete list of all actions, see the [`.github/actions/`](.github/actions/) directory. Each action includes its own README with detailed documentation.
 

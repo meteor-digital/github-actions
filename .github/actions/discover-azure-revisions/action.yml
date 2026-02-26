@@ -1,0 +1,45 @@
+name: 'Discover Azure Container App Revisions'
+description: 'Discovers the new (latest) and old (active) revisions of an Azure Container App after a deployment'
+
+inputs:
+  app_name:
+    description: 'Azure Container App name'
+    required: true
+  resource_group:
+    description: 'Azure resource group'
+    required: true
+
+outputs:
+  new_revision:
+    description: 'Name of the newest revision (just deployed, inactive)'
+    value: ${{ steps.discover.outputs.new_revision }}
+  old_revision:
+    description: 'Name of the currently active revision (receiving traffic)'
+    value: ${{ steps.discover.outputs.old_revision }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Discover revisions
+      id: discover
+      shell: bash
+      run: |
+        APP="${{ inputs.app_name }}"
+        RG="${{ inputs.resource_group }}"
+
+        echo "🔍 Discovering revisions for $APP in $RG..."
+
+        # Get the latest (newest) revision — this is the one just deployed by Bicep (inactive)
+        NEW_REVISION=$(az containerapp revision list \
+          --name "$APP" -g "$RG" \
+          --query "sort_by(@, &properties.createdTime)[-1].name" -o tsv)
+
+        # Get the currently active revision (receiving traffic)
+        OLD_REVISION=$(az containerapp ingress traffic show \
+          --name "$APP" -g "$RG" \
+          --query "[?weight==\`100\`].revisionName | [0]" -o tsv)
+
+        echo "new_revision=$NEW_REVISION" >> $GITHUB_OUTPUT
+        echo "old_revision=$OLD_REVISION" >> $GITHUB_OUTPUT
+        echo "📦 New revision: $NEW_REVISION"
+        echo "📦 Old revision: $OLD_REVISION"

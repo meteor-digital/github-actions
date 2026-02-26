@@ -1,0 +1,64 @@
+name: 'Run Command on Azure Container'
+description: 'Runs commands on an Azure Container App revision via az containerapp exec'
+
+inputs:
+  app_name:
+    description: 'Azure Container App name'
+    required: true
+  resource_group:
+    description: 'Azure resource group'
+    required: true
+  revision:
+    description: 'Target revision name'
+    required: true
+  commands:
+    description: 'Commands to run (newline separated)'
+    required: true
+  description:
+    description: 'Description for logging'
+    required: false
+    default: 'commands'
+  fail_on_error:
+    description: 'Whether to fail on command error'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run commands
+      shell: bash
+      run: |
+        echo "⚙️  Running ${{ inputs.description }}..."
+
+        APP="${{ inputs.app_name }}"
+        RG="${{ inputs.resource_group }}"
+        REVISION="${{ inputs.revision }}"
+        COMMANDS="${{ inputs.commands }}"
+        FAIL_ON_ERROR="${{ inputs.fail_on_error }}"
+
+        if [ -z "$COMMANDS" ]; then
+          echo "💡 No ${{ inputs.description }} to run"
+          exit 0
+        fi
+
+        while IFS= read -r command; do
+          if [ -n "$command" ]; then
+            echo "Executing: $command"
+            if [ "$FAIL_ON_ERROR" = 'true' ]; then
+              az containerapp exec \
+                --name "$APP" \
+                --resource-group "$RG" \
+                --revision "$REVISION" \
+                --command "$command"
+            else
+              az containerapp exec \
+                --name "$APP" \
+                --resource-group "$RG" \
+                --revision "$REVISION" \
+                --command "$command" || echo "⚠️  Command failed but continuing: $command"
+            fi
+          fi
+        done <<< "$COMMANDS"
+
+        echo "✅ Finished running ${{ inputs.description }}"

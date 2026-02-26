@@ -1,0 +1,41 @@
+name: 'Switch Azure Container App Traffic'
+description: 'Switches traffic to a new revision and optionally deactivates the old revision'
+
+inputs:
+  app_name:
+    description: 'Azure Container App name'
+    required: true
+  resource_group:
+    description: 'Azure resource group'
+    required: true
+  new_revision:
+    description: 'Revision to route 100% traffic to'
+    required: true
+  old_revision:
+    description: 'Previous revision to deactivate (skipped if same as new_revision or empty)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Switch traffic to new revision
+      shell: bash
+      run: |
+        echo "🔄 Switching traffic to ${{ inputs.new_revision }}..."
+        az containerapp ingress traffic set \
+          --name "${{ inputs.app_name }}" \
+          --resource-group "${{ inputs.resource_group }}" \
+          --revision-weight "${{ inputs.new_revision }}=100"
+        echo "✅ Traffic switched to new revision"
+
+    - name: Deactivate old revision
+      if: inputs.old_revision != '' && inputs.old_revision != inputs.new_revision
+      shell: bash
+      run: |
+        echo "🗑️ Deactivating old revision: ${{ inputs.old_revision }}..."
+        az containerapp revision deactivate \
+          --name "${{ inputs.app_name }}" \
+          --resource-group "${{ inputs.resource_group }}" \
+          --revision "${{ inputs.old_revision }}"
+        echo "✅ Old revision deactivated"

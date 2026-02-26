@@ -1,0 +1,63 @@
+name: 'Cleanup Old Azure Revisions'
+description: 'Cleans up old inactive Azure Container App revisions keeping a configurable number of previous revisions'
+
+inputs:
+  app_name:
+    description: 'Azure Container App name'
+    required: true
+  resource_group:
+    description: 'Azure resource group'
+    required: true
+  keep_revisions:
+    description: 'Number of inactive revisions to keep'
+    required: false
+    default: '3'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Cleanup old revisions
+      shell: bash
+      run: |
+        echo "🧹 Cleaning up old inactive revisions..."
+        
+        APP_NAME="${{ inputs.app_name }}"
+        RESOURCE_GROUP="${{ inputs.resource_group }}"
+        KEEP_REVISIONS="${{ inputs.keep_revisions }}"
+        
+        # Get all inactive revisions sorted by creation time (oldest first)
+        INACTIVE_REVISIONS=$(az containerapp revision list \
+          --name "$APP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
+          --query "[?properties.active==\`false\`].{name:name,created:properties.createdTime}" \
+          --output tsv \
+          | sort -k2 \
+          | cut -f1)
+        
+        # Count inactive revisions
+        REVISION_COUNT=$(echo "$INACTIVE_REVISIONS" | grep -c . || echo 0)
+        
+        echo "📊 Found $REVISION_COUNT inactive revisions"
+        echo "🔒 Keeping last $KEEP_REVISIONS revisions"
+        
+        # Check if we need to delete old revisions
+        if [ "$REVISION_COUNT" -gt "$KEEP_REVISIONS" ]; then
+          DELETE_COUNT=$((REVISION_COUNT - KEEP_REVISIONS))
+          echo "🗑️  Deleting $DELETE_COUNT old revisions..."
+          
+          # Delete oldest revisions (keep last N)
+          echo "$INACTIVE_REVISIONS" | head -n "$DELETE_COUNT" | while read -r REVISION; do
+            if [ -n "$REVISION" ]; then
+              echo "  Deleting: $REVISION"
+              az containerapp revision delete \
+                --name "$APP_NAME" \
+                --resource-group "$RESOURCE_GROUP" \
+                --revision "$REVISION" \
+                --yes
+            fi
+          done
+          
+          echo "✅ Cleanup completed"
+        else
+          echo "✅ No cleanup needed (only $REVISION_COUNT inactive revisions)"
+        fi

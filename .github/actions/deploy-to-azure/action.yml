@@ -1,0 +1,160 @@
+name: 'Deploy to Azure Container App'
+description: 'Deploys to an Azure Container App using blue-green revision strategy with maintenance mode, migrations, and traffic switching'
+
+inputs:
+  config_file:
+    description: 'Path to deployment configuration file'
+    required: false
+    default: '.github/pipeline-config.yml'
+  app_name:
+    description: 'Azure Container App name'
+    required: true
+  resource_group:
+    description: 'Azure resource group'
+    required: true
+
+outputs:
+  deployment_status:
+    description: 'Status of the deployment (success, failed)'
+    value: ${{ steps.deployment_result.outputs.status }}
+  new_revision:
+    description: 'Name of the newly deployed revision'
+    value: ${{ steps.revisions.outputs.new_revision }}
+  old_revision:
+    description: 'Name of the previously active revision'
+    value: ${{ steps.revisions.outputs.old_revision }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Detect project type
+      id: project_type
+      uses: meteor-digital/github-actions/.github/actions/detect-project-type@main
+
+    - name: Parse deployment configuration
+      id: config
+      uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
+      with:
+        config_file: ${{ inputs.config_file }}
+        project_type: ${{ steps.project_type.outputs.type }}
+
+    - name: Discover revisions
+      id: revisions
+      uses: meteor-digital/github-actions/.github/actions/discover-azure-revisions@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+
+    - name: Run pre-deployment commands
+      if: steps.config.outputs.pre_deploy_commands != ''
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.new_revision }}
+        commands: ${{ steps.config.outputs.pre_deploy_commands }}
+        description: 'pre-deployment commands'
+
+    - name: Enable maintenance mode
+      if: steps.config.outputs.maintenance_enable_cmd != ''
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.new_revision }}
+        commands: ${{ steps.config.outputs.maintenance_enable_cmd }}
+        description: 'maintenance mode (enable)'
+
+    - name: Run database migrations
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.new_revision }}
+        commands: ${{ steps.config.outputs.migration_command }}
+        description: 'database migrations'
+
+    - name: Run post-deployment commands
+      if: steps.config.outputs.post_deploy_commands != ''
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.new_revision }}
+        commands: ${{ steps.config.outputs.post_deploy_commands }}
+        description: 'post-deployment commands'
+        fail_on_error: 'false'
+
+    - name: Activate new revision
+      uses: meteor-digital/github-actions/.github/actions/switch-azure-traffic@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        new_revision: ${{ steps.revisions.outputs.new_revision }}
+        old_revision: ${{ steps.revisions.outputs.old_revision }}
+
+    - name: Disable maintenance mode
+      if: steps.config.outputs.maintenance_disable_cmd != ''
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.new_revision }}
+        commands: ${{ steps.config.outputs.maintenance_disable_cmd }}
+        description: 'maintenance mode (disable)'
+
+    - name: Cleanup old revisions
+      uses: meteor-digital/github-actions/.github/actions/cleanup-azure-revisions@main
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        keep_revisions: '3'
+
+    - name: Set deployment result
+      id: deployment_result
+      if: always()
+      shell: bash
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "✅ Azure deployment completed successfully"
+        else
+          echo "status=failed" >> $GITHUB_OUTPUT
+          echo "❌ Azure deployment failed"
+        fi
+
+    - name: Cleanup after failure
+      if: failure()
+      shell: bash
+      run: |
+        echo "🔄 Deployment failed, cleaning up..."
+        
+        APP_NAME="${{ inputs.app_name }}"
+        RESOURCE_GROUP="${{ inputs.resource_group }}"
+        NEW_REVISION="${{ steps.revisions.outputs.new_revision }}"
+        OLD_REVISION="${{ steps.revisions.outputs.old_revision }}"
+        PROJECT_TYPE="${{ steps.project_type.outputs.type }}"
+        
+        # Try to disable maintenance mode on the active revision
+        if [ -n "$NEW_REVISION" ]; then
+          echo "Attempting to disable maintenance mode on new revision..."
+          az containerapp exec \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --revision "$NEW_REVISION" \
+            --command "${{ steps.config.outputs.maintenance_disable_cmd }}" \
+            || echo "⚠️  Could not disable maintenance mode"
+        fi
+        
+        # Clear cache for Shopware/Symfony projects
+        if [ "$PROJECT_TYPE" = "shopware" ] || [ "$PROJECT_TYPE" = "symfony" ]; then
+          echo "Clearing cache..."
+          az containerapp exec \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --revision "$NEW_REVISION" \
+            --command "bin/console cache:clear" \
+            || echo "⚠️  Could not clear cache"
+        fi
+        
+        echo "⚠️  Cleanup completed with possible issues"
