@@ -471,28 +471,33 @@ jobs:
           fi
 
       - name: Run integration tests
+        id: integration-tests
         shell: bash
         run: |
           echo "🧪 Running integration tests..."
           echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
-          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite integration
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite integration --stop-on-failure
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled
 
       - name: Run component tests
+        if: success() || failure()
+        id: component-tests
         shell: bash
         run: |
           echo "🧪 Running component tests..."
           echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
-          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite component
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite component --stop-on-failure
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled
 
       - name: Run e2e tests
+        if: success() || failure()
+        id: e2e-tests
         shell: bash
         run: |
           echo "🧪 Running e2e tests..."
           echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
-          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite e2e
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite e2e --stop-on-failure
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled
