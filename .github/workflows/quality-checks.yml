@@ -487,3 +487,12 @@ jobs:
           php ${{ needs.setup.outputs.phpunit_bin }} --testsuite component
         env:
           SYMFONY_DEPRECATIONS_HELPER: disabled
+
+      - name: Run e2e tests
+        shell: bash
+        run: |
+          echo "🧪 Running e2e tests..."
+          echo "  Using binary: ${{ needs.setup.outputs.phpunit_bin }}"
+          php ${{ needs.setup.outputs.phpunit_bin }} --testsuite e2e
+        env:
+          SYMFONY_DEPRECATIONS_HELPER: disabled
