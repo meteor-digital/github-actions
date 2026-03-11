@@ -121,7 +121,7 @@ az containerapp ingress traffic set --name <app> --resource-group <rg> --revisio
     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 - name: Checkout repository
-  uses: actions/checkout@v4
+  uses: actions/checkout@v6
 
 - name: Deploy to Azure
   uses: meteor-digital/github-actions/.github/actions/deploy-to-azure@main

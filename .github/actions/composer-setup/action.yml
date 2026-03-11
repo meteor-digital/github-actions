@@ -21,7 +21,7 @@ runs:
     - name: Cache vendor directory
       if: inputs.skip_cache != 'yes'
       id: cache-vendor
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: vendor
         key: ${{ runner.os }}-vendor-${{ hashFiles('**/composer.lock') }}-dev-${{ inputs.with_dev }}
@@ -31,7 +31,7 @@ runs:
 
     - name: Cache Composer cache directory
       if: inputs.skip_cache != 'yes' && steps.cache-vendor.outputs.cache-hit != 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.composer/cache
         key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}

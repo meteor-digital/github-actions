@@ -55,7 +55,7 @@ jobs:
       version: ${{ steps.params.outputs.version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Determine artifact name for automatic deployment
         if: inputs.event_name == 'workflow_run'
@@ -94,7 +94,7 @@ jobs:
       final_branch: ${{ steps.setup.outputs.branch }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Detect project type
         id: detect
@@ -130,7 +130,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Send start notification
         if: needs.setup.outputs.notification_webhook

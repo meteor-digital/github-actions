@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -216,7 +216,7 @@ jobs:
     if: contains(fromJson(needs.setup.outputs.enabled_tools), 'psalm')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -260,7 +260,7 @@ jobs:
     if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpstan')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -330,7 +330,7 @@ jobs:
     if: contains(fromJson(needs.setup.outputs.enabled_tools), 'rector')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -375,7 +375,7 @@ jobs:
     if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpunit')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 
@@ -418,7 +418,7 @@ jobs:
         options: --health-cmd="rabbitmqctl status" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || '' }}
 

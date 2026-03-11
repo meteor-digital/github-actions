@@ -80,7 +80,7 @@ runs:
         echo "  📄 Node files hash: $NODE_HASH"
 
     - name: '📦 Restore cached dependencies'
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       id: cache-deps
       with:
         path: |
@@ -100,7 +100,7 @@ runs:
 
     - name: '🟢 Setup Node.js ${{ steps.config.outputs.node_version }}'
       if: inputs.node_skip_setup == 'false' || (inputs.node_skip_setup != 'true' && hashFiles('package.json') != '')
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ steps.config.outputs.node_version }}
         cache: ${{ hashFiles('package.json') != '' && 'npm' || '' }}
@@ -117,7 +117,7 @@ runs:
 
     - name: '💾 Save dependency cache'
       if: steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: |
           vendor/

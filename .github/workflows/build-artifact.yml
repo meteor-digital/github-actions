@@ -42,7 +42,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         
       - name: Read CI configuration
         id: config
@@ -81,7 +81,7 @@ jobs:
           
       - name: Upload artifact with permission preservation
         if: github.ref_type == 'branch'
-        uses: pyTooling/upload-artifact@v4
+        uses: pyTooling/upload-artifact@v1.10.0
         with:
           name: ${{ steps.determine_artifact_name.outputs.artifact_name }}
           path: .
