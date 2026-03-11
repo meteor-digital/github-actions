@@ -9,8 +9,9 @@ inputs:
     description: 'Azure resource group'
     required: true
   revision:
-    description: 'Target revision name'
-    required: true
+    description: 'Target revision name (auto-detected if not provided)'
+    required: false
+    default: ''
   commands:
     description: 'Commands to run (newline separated)'
     required: true
@@ -42,22 +43,36 @@ runs:
           exit 0
         fi
 
+        # Get active revision if not specified
+        if [ -z "$REVISION" ]; then
+          echo "📋 Getting active revision..."
+          REVISION=$(az containerapp show \
+            --name "$APP" \
+            --resource-group "$RG" \
+            --query "properties.latestRevisionName" -o tsv)
+          echo "📝 Using revision: $REVISION"
+        fi
+
         while IFS= read -r command; do
           if [ -n "$command" ]; then
             echo "Executing: $command"
+            
             if [ "$FAIL_ON_ERROR" = 'true' ]; then
-              az containerapp exec \
-                --name "$APP" \
-                --resource-group "$RG" \
-                --revision "$REVISION" \
-                --command "$command"
+              script -e -c "az containerapp exec \
+                --name \"$APP\" \
+                --resource-group \"$RG\" \
+                --revision \"$REVISION\" \
+                --command \"$command\"" /tmp/typescript
             else
-              az containerapp exec \
-                --name "$APP" \
-                --resource-group "$RG" \
-                --revision "$REVISION" \
-                --command "$command" || echo "⚠️  Command failed but continuing: $command"
+              script -e -c "az containerapp exec \
+                --name \"$APP\" \
+                --resource-group \"$RG\" \
+                --revision \"$REVISION\" \
+                --command \"$command\"" /tmp/typescript || echo "⚠️  Command failed but continuing: $command"
             fi
+            
+            cat /tmp/typescript
+            rm -f /tmp/typescript
           fi
         done <<< "$COMMANDS"
 
