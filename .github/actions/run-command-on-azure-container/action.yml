@@ -57,21 +57,35 @@ runs:
           if [ -n "$command" ]; then
             echo "Executing: $command"
             
-            if [ "$FAIL_ON_ERROR" = 'true' ]; then
-              script -e -c "az containerapp exec \
-                --name \"$APP\" \
-                --resource-group \"$RG\" \
-                --revision \"$REVISION\" \
-                --command \"$command\"" /tmp/typescript
-            else
-              script -e -c "az containerapp exec \
-                --name \"$APP\" \
-                --resource-group \"$RG\" \
-                --revision \"$REVISION\" \
-                --command \"$command\"" /tmp/typescript || echo "⚠️  Command failed but continuing: $command"
-            fi
+            set +e
+            script -e -c "az containerapp exec \
+              --name \"$APP\" \
+              --resource-group \"$RG\" \
+              --revision \"$REVISION\" \
+              --command \"$command\"" /tmp/typescript
+            EXIT_CODE=$?
+            set -e
             
             cat /tmp/typescript
+            
+            if grep -q '"Error":\s*{' /tmp/typescript || grep -q 'ERROR:' /tmp/typescript; then
+              echo "❌ Error detected in command output"
+              rm -f /tmp/typescript
+              if [ "$FAIL_ON_ERROR" = 'true' ]; then
+                exit 1
+              else
+                echo "⚠️  Command failed but continuing: $command"
+              fi
+            elif [ $EXIT_CODE -ne 0 ]; then
+              echo "❌ Command exited with code: $EXIT_CODE"
+              rm -f /tmp/typescript
+              if [ "$FAIL_ON_ERROR" = 'true' ]; then
+                exit $EXIT_CODE
+              else
+                echo "⚠️  Command failed but continuing: $command"
+              fi
+            fi
+            
             rm -f /tmp/typescript
           fi
         done <<< "$COMMANDS"
