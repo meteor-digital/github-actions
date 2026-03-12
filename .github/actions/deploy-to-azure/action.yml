@@ -123,38 +123,26 @@ runs:
           echo "❌ Azure deployment failed"
         fi
 
-    - name: Cleanup after failure
-      if: failure()
-      shell: bash
-      run: |
-        echo "🔄 Deployment failed, cleaning up..."
-        
-        APP_NAME="${{ inputs.app_name }}"
-        RESOURCE_GROUP="${{ inputs.resource_group }}"
-        NEW_REVISION="${{ steps.revisions.outputs.new_revision }}"
-        OLD_REVISION="${{ steps.revisions.outputs.old_revision }}"
-        PROJECT_TYPE="${{ steps.project_type.outputs.type }}"
-        
-        # Try to disable maintenance mode on the active revision
-        if [ -n "$NEW_REVISION" ]; then
-          echo "Attempting to disable maintenance mode on new revision..."
-          az containerapp exec \
-            --name "$APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --revision "$NEW_REVISION" \
-            --command "${{ steps.config.outputs.maintenance_disable_cmd }}" \
-            || echo "⚠️  Could not disable maintenance mode"
-        fi
-        
-        # Clear cache for Shopware/Symfony projects
-        if [ "$PROJECT_TYPE" = "shopware" ] || [ "$PROJECT_TYPE" = "symfony" ]; then
-          echo "Clearing cache..."
-          az containerapp exec \
-            --name "$APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
-            --revision "$NEW_REVISION" \
-            --command "bin/console cache:clear" \
-            || echo "⚠️  Could not clear cache"
-        fi
-        
-        echo "⚠️  Cleanup completed with possible issues"
+    - name: Disable maintenance mode on failure
+      if: failure() && steps.config.outputs.maintenance_disable_cmd != ''
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      continue-on-error: true
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.old_revision }}
+        commands: ${{ steps.config.outputs.maintenance_disable_cmd }}
+        description: 'cleanup - disable maintenance mode'
+        fail_on_error: 'false'
+
+    - name: Clear cache on failure
+      if: failure() && (steps.project_type.outputs.type == 'shopware' || steps.project_type.outputs.type == 'symfony')
+      uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
+      continue-on-error: true
+      with:
+        app_name: ${{ inputs.app_name }}
+        resource_group: ${{ inputs.resource_group }}
+        revision: ${{ steps.revisions.outputs.old_revision }}
+        commands: 'bin/console cache:clear'
+        description: 'cleanup - clear cache'
+        fail_on_error: 'false'
