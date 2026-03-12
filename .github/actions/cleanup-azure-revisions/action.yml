@@ -35,7 +35,11 @@ runs:
           | cut -f1)
         
         # Count inactive revisions
-        REVISION_COUNT=$(echo "$INACTIVE_REVISIONS" | grep -c . || echo 0)
+        if [ -z "$INACTIVE_REVISIONS" ]; then
+          REVISION_COUNT=0
+        else
+          REVISION_COUNT=$(echo "$INACTIVE_REVISIONS" | grep -c .)
+        fi
         
         echo "📊 Found $REVISION_COUNT inactive revisions"
         echo "🔒 Keeping last $KEEP_REVISIONS revisions"
