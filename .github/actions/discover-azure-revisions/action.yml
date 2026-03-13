@@ -34,10 +34,25 @@ runs:
           --name "$APP" -g "$RG" \
           --query "sort_by(@, &properties.createdTime)[-1].name" -o tsv)
 
-        # Get the currently active revision (receiving traffic)
+        # Get the revision that was active before this deployment.
+        # We first try to resolve it from the ingress traffic config. When traffic is configured
+        # with "latestRevision: true" (common in bicep), revisionName is null, so we fall back
+        # to the second-newest revision by creation time.
         OLD_REVISION=$(az containerapp ingress traffic show \
           --name "$APP" -g "$RG" \
           --query "[?weight==\`100\`].revisionName | [0]" -o tsv)
+
+        if [ -z "$OLD_REVISION" ] || [ "$OLD_REVISION" = "None" ]; then
+          # Fallback: traffic uses latestRevision=true, so get second-newest revision
+          OLD_REVISION=$(az containerapp revision list \
+            --name "$APP" -g "$RG" \
+            --query "sort_by(@, &properties.createdTime)[-2].name" -o tsv)
+        fi
+
+        # If old and new are the same, there's nothing to deactivate
+        if [ "$OLD_REVISION" = "$NEW_REVISION" ]; then
+          OLD_REVISION=""
+        fi
 
         echo "new_revision=$NEW_REVISION" >> $GITHUB_OUTPUT
         echo "old_revision=$OLD_REVISION" >> $GITHUB_OUTPUT
