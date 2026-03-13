@@ -16,6 +16,10 @@ on:
         description: 'Version from manual workflow_dispatch'
         type: string
         required: false
+      disable_maintenance:
+        description: 'Disable maintenance mode after deployment'
+        type: boolean
+        default: true
       workflow_run_id:
         description: 'Workflow run ID for automatic deployment'
         type: string
@@ -175,6 +179,7 @@ jobs:
           environment: ${{ needs.setup.outputs.final_environment }}
           build_path: '.'
           ssh_private_key: ${{ secrets.ssh_private_key }}
+          disable_maintenance: ${{ inputs.disable_maintenance }}
           
       - name: Send success notification
         if: success() && needs.setup.outputs.notification_webhook

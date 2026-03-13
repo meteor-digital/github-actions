@@ -16,6 +16,10 @@ inputs:
   ssh_private_key:
     description: 'SSH private key for deployment'
     required: true
+  disable_maintenance:
+    description: 'Disable maintenance mode after deployment'
+    required: false
+    default: 'true'
 
 outputs:
   deployment_status:
@@ -220,7 +224,7 @@ runs:
         messenger_worker_id: ${{ steps.config.outputs.messenger_worker_id }}
 
     - name: Disable maintenance mode
-      if: steps.config.outputs.maintenance_mode == 'true'
+      if: steps.config.outputs.maintenance_mode == 'true' && inputs.disable_maintenance == 'true'
       uses: meteor-digital/github-actions/.github/actions/run-commands-on-host@main
       with:
         host: ${{ steps.config.outputs.host }}
@@ -269,9 +273,15 @@ runs:
         DEPLOY_DATE="${{ steps.setup.outputs.deploy_date }}"
         PROJECT_TYPE="${{ steps.project_type.outputs.type }}"
         
-        ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
-          # Disable maintenance mode (framework-specific)
-          [ -d $DEPLOY_PATH/current ] && cd $DEPLOY_PATH/current && ${{ steps.config.outputs.maintenance_disable_cmd }} || echo 'Skipping maintenance disable'
+        # Disable maintenance mode (framework-specific) - only if disable_maintenance is true
+        if [ '${{ inputs.disable_maintenance }}' = 'true' ]; then
+          echo "🔧 Disabling maintenance mode on failure..."
+          ssh -p "$SSH_PORT" "$SSH_USER@$HOST" "
+            [ -d $DEPLOY_PATH/current ] && cd $DEPLOY_PATH/current && ${{ steps.config.outputs.maintenance_disable_cmd }} || echo 'Skipping maintenance disable'
+          "
+        else
+          echo "🔧 Maintenance mode kept enabled as requested"
+        fi
           
           # Clear cache for Shopware/Symfony projects
           if [ '$PROJECT_TYPE' = 'shopware' ] || [ '$PROJECT_TYPE' = 'symfony' ]; then

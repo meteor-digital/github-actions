@@ -29,6 +29,7 @@ A production-ready GitHub Action for deploying applications to Azure Container A
 | `config_file` | Path to pipeline configuration file | No | `.github/pipeline-config.yml` |
 | `app_name` | Azure Container App name | Yes | - |
 | `resource_group` | Azure resource group | Yes | - |
+| `disable_maintenance` | Disable maintenance mode after deployment | No | `true` |
 
 ## Outputs
 
@@ -101,6 +102,17 @@ flowchart TD
 ## Framework Support
 
 Auto-detects **Shopware**, **Laravel**, or **Symfony** and uses framework-specific commands from `.github/pipeline-config.yml`. No Azure-specific configuration needed.
+
+## Maintenance Mode Control
+
+Control maintenance mode behavior with the `disable_maintenance` input:
+
+- **`true`** (default): Auto-disable maintenance after deployment
+- **`false`**: Keep maintenance enabled for post-deployment tasks
+
+```yaml
+disable_maintenance: false  # Keep maintenance enabled
+```
 
 ## Rollback
 

@@ -32,6 +32,7 @@ A production-ready GitHub Action for deploying applications to remote hosts usin
 | `build_path` | Path to built project files | No | `.` |
 | `ssh_private_key` | SSH private key for deployment | Yes | - |
 | `ssh_user` | SSH username for deployment | Yes | - |
+| `disable_maintenance` | Disable maintenance mode after deployment | No | `true` |
 
 ## Outputs
 
@@ -111,6 +112,19 @@ flowchart TD
 | **Shopware** | `.shopware-project.yml` | `bin/console database:migrate --all` | `files`, `public/media`, `config/jwt`, `var/log` |
 | **Laravel** | `artisan` | `php artisan migrate --force` | `storage`, `bootstrap/cache` |
 | **Symfony** | `symfony.lock` | `bin/console doctrine:migrations:migrate` | `var`, `public/uploads` |
+
+## Maintenance Mode Control
+
+Control maintenance mode behavior with the `disable_maintenance` input:
+
+- **`true`** (default): Auto-disable maintenance after deployment
+- **`false`**: Keep maintenance enabled for post-deployment tasks
+
+```yaml
+disable_maintenance: false  # Keep maintenance enabled
+```
+
+Also configurable per environment in `pipeline-config.yml` under `deployment.environments.<env>.maintenance_mode`.
 
 ## Hosting Provider Support
 

@@ -12,6 +12,10 @@ inputs:
   resource_group:
     description: 'Azure resource group'
     required: true
+  disable_maintenance:
+    description: 'Disable maintenance mode after deployment'
+    required: false
+    default: 'true'
 
 outputs:
   deployment_status:
@@ -105,7 +109,7 @@ runs:
         old_revision: ${{ steps.revisions.outputs.old_revision }}
 
     - name: Disable maintenance mode
-      if: steps.config.outputs.maintenance_disable_cmd != ''
+      if: steps.config.outputs.maintenance_disable_cmd != '' && inputs.disable_maintenance == 'true'
       uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
       with:
         app_name: ${{ inputs.app_name }}
@@ -135,7 +139,7 @@ runs:
         fi
 
     - name: Disable maintenance mode on failure
-      if: failure() && steps.config.outputs.maintenance_disable_cmd != ''
+      if: failure() && steps.config.outputs.maintenance_disable_cmd != '' && inputs.disable_maintenance == 'true'
       uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
       continue-on-error: true
       with:

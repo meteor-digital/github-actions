@@ -24,6 +24,11 @@ on:
         description: 'Version to deploy (leave empty for latest)'
         required: false
         type: string
+      disable_maintenance:
+        description: 'Disable maintenance mode after deployment'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   run:
@@ -32,6 +37,7 @@ jobs:
       config_path: ".github/pipeline-config.yml"
       manual_environment: ${{ github.event.inputs.environment }}
       manual_version: ${{ github.event.inputs.version }}
+      disable_maintenance: ${{ github.event.inputs.disable_maintenance }}
       workflow_run_id: ${{ github.event.workflow_run.id }}
       workflow_run_branch: ${{ github.event.workflow_run.head_branch }}
       workflow_run_conclusion: ${{ github.event.workflow_run.conclusion }}
