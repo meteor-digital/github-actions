@@ -434,7 +434,7 @@ runs:
 
     - name: '🔧 Apply project overrides'
       id: apply_overrides
-      if: inputs.environment != '' && inputs.project_type != ''
+      if: inputs.project_type != ''
       shell: bash
       run: |
         CONFIG_FILE="${{ inputs.config_file }}"
@@ -446,7 +446,7 @@ runs:
         PRE_DEPLOY_COMMANDS="${{ steps.framework_defaults.outputs.pre_deploy_commands }}"
         POST_DEPLOY_COMMANDS="${{ steps.framework_defaults.outputs.post_deploy_commands }}"
         
-        # Parse project-specific overrides
+        # Parse project-specific overrides (only if deployment section exists)
         PROJECT_SHARED_FOLDERS=$(yq eval '.deployment.shared_folders[]' "$CONFIG_FILE" 2>/dev/null)
         if [ -n "$PROJECT_SHARED_FOLDERS" ] && [ "$PROJECT_SHARED_FOLDERS" != "null" ]; then
           echo "  Overriding shared folders with project configuration"
