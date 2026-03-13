@@ -497,18 +497,22 @@ runs:
         echo "    phpunit: ${{ steps.parse_ci.outputs.phpunit_bin }}"
         echo "    phpunuhi: ${{ steps.parse_ci.outputs.phpunuhi_bin }}"
         
-        if [ -n "${{ inputs.environment }}" ] && [ -n "${{ inputs.project_type }}" ]; then
-          echo "  Environment: ${{ inputs.environment }}"
-          echo "  Host: ${{ steps.parse_deployment.outputs.host }}"
-          echo "  Path: ${{ steps.parse_deployment.outputs.path }}"
-          echo "  Provider: ${{ steps.parse_deployment.outputs.provider }}"
-          echo "  SSH Port: ${{ steps.parse_deployment.outputs.ssh_port }}"
-          echo "  SSH User: ${{ steps.parse_deployment.outputs.ssh_user }}"
-          echo "  PHP Service: ${{ steps.parse_deployment.outputs.php_service }}"
-          echo "  Maintenance Mode: ${{ steps.parse_deployment.outputs.maintenance_mode }}"
-          echo "  Keep Releases: ${{ steps.parse_deployment.outputs.keep_releases }}"
-          echo "  Messenger Worker ID: ${{ steps.parse_deployment.outputs.messenger_worker_id }}"
+        if [ -n "${{ inputs.project_type }}" ]; then
           echo "  Shared Folders: $(echo '${{ steps.apply_overrides.outputs.shared_folders }}' | wc -l) folders"
           echo "  Pre-deploy Commands: $(echo '${{ steps.apply_overrides.outputs.pre_deploy_commands }}' | wc -l) commands"
           echo "  Post-deploy Commands: $(echo '${{ steps.apply_overrides.outputs.post_deploy_commands }}' | wc -l) commands"
+          echo "  Keep Releases: ${{ steps.parse_deployment.outputs.keep_releases }}"
+        fi
+        
+        if [ -n "${{ inputs.environment }}" ] && [ -n "${{ inputs.project_type }}" ]; then
+          echo "  📦 Deployment Configuration (${{ inputs.environment }}):"
+          echo "    Environment: ${{ inputs.environment }}"
+          echo "    Host: ${{ steps.parse_deployment.outputs.host }}"
+          echo "    Path: ${{ steps.parse_deployment.outputs.path }}"
+          echo "    Provider: ${{ steps.parse_deployment.outputs.provider }}"
+          echo "    SSH Port: ${{ steps.parse_deployment.outputs.ssh_port }}"
+          echo "    SSH User: ${{ steps.parse_deployment.outputs.ssh_user }}"
+          echo "    PHP Service: ${{ steps.parse_deployment.outputs.php_service }}"
+          echo "    Maintenance Mode: ${{ steps.parse_deployment.outputs.maintenance_mode }}"
+          echo "    Messenger Worker ID: ${{ steps.parse_deployment.outputs.messenger_worker_id }}"
         fi
