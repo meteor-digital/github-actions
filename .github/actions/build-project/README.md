@@ -51,7 +51,7 @@ build:
 ### Shopware Projects
 
 1. Uses `shopware/shopware-cli-action@v2` to install Shopware CLI
-2. Uses `shopwareLabs/build-project-action@v1` for optimal Shopware builds
+2. Uses `shopware/build-project-action@v1` for optimal Shopware builds
 3. Enables experimental asset caching for improved performance
 
 ### Laravel Projects

@@ -44,7 +44,7 @@ runs:
         
     - name: '🛍️ Build Shopware project'
       if: steps.project-type.outputs.type == 'shopware'
-      uses: shopwareLabs/build-project-action@v1
+      uses: shopware/build-project-action@v1
       env:
         SHOPWARE_CLI_EXPERIMENTAL_ASSET_CACHING: 0
         
