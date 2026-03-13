@@ -447,19 +447,19 @@ runs:
         POST_DEPLOY_COMMANDS="${{ steps.framework_defaults.outputs.post_deploy_commands }}"
         
         # Parse project-specific overrides (only if deployment section exists)
-        PROJECT_SHARED_FOLDERS=$(yq eval '.deployment.shared_folders[]' "$CONFIG_FILE" 2>/dev/null)
+        PROJECT_SHARED_FOLDERS=$(yq eval '.deployment.shared_folders[]' "$CONFIG_FILE" 2>/dev/null || true)
         if [ -n "$PROJECT_SHARED_FOLDERS" ] && [ "$PROJECT_SHARED_FOLDERS" != "null" ]; then
           echo "  Overriding shared folders with project configuration"
           SHARED_FOLDERS="$PROJECT_SHARED_FOLDERS"
         fi
         
-        PROJECT_PRE_DEPLOY=$(yq eval '.deployment.commands.pre_deploy[]' "$CONFIG_FILE" 2>/dev/null)
+        PROJECT_PRE_DEPLOY=$(yq eval '.deployment.commands.pre_deploy[]' "$CONFIG_FILE" 2>/dev/null || true)
         if [ -n "$PROJECT_PRE_DEPLOY" ] && [ "$PROJECT_PRE_DEPLOY" != "null" ]; then
           echo "  Overriding pre-deploy commands with project configuration"
           PRE_DEPLOY_COMMANDS="$PROJECT_PRE_DEPLOY"
         fi
         
-        PROJECT_POST_DEPLOY=$(yq eval '.deployment.commands.post_deploy[]' "$CONFIG_FILE" 2>/dev/null)
+        PROJECT_POST_DEPLOY=$(yq eval '.deployment.commands.post_deploy[]' "$CONFIG_FILE" 2>/dev/null || true)
         if [ -n "$PROJECT_POST_DEPLOY" ] && [ "$PROJECT_POST_DEPLOY" != "null" ]; then
           echo "  Overriding post-deploy commands with project configuration"
           POST_DEPLOY_COMMANDS="$PROJECT_POST_DEPLOY"
