@@ -45,6 +45,17 @@ runs:
         app_name: ${{ inputs.app_name }}
         resource_group: ${{ inputs.resource_group }}
 
+    - name: Pin traffic to old revision
+      if: steps.revisions.outputs.old_revision != '' && steps.revisions.outputs.old_revision != steps.revisions.outputs.new_revision
+      shell: bash
+      run: |
+        echo "📌 Pinning traffic to old revision: ${{ steps.revisions.outputs.old_revision }}"
+        az containerapp ingress traffic set \
+          --name "${{ inputs.app_name }}" \
+          --resource-group "${{ inputs.resource_group }}" \
+          --revision-weight "${{ steps.revisions.outputs.old_revision }}=100"
+        echo "✅ Traffic pinned to old revision (new revision has 0% traffic)"
+
     - name: Run pre-deployment commands
       if: steps.config.outputs.pre_deploy_commands != ''
       uses: meteor-digital/github-actions/.github/actions/run-command-on-azure-container@main
