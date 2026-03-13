@@ -62,11 +62,30 @@ runs:
               --name \"$APP\" \
               --resource-group \"$RG\" \
               --revision \"$REVISION\" \
-              --command \"$command\"" /tmp/typescript
+              --command \"$command\"" /tmp/typescript < /dev/null
             EXIT_CODE=$?
             set -e
             
-            cat /tmp/typescript
+            # Clean up the output: remove script boilerplate and ANSI codes
+            sed -i \
+              -e '/Script started/d' \
+              -e '/Script done/d' \
+              -e '/\[COMMAND=/d' \
+              -e '/\[COMMAND_EXIT_CODE=/d' \
+              -e '/INFO: Connecting/d' \
+              -e '/Use ctrl + D to exit/d' \
+              -e '/INFO: Successfully connected/d' \
+              -e '/Revision:/d' \
+              -e '/Replica:/d' \
+              -e '/INFO: received success status from cluster/d' \
+              -e '/Disconnecting\.\.\./d' \
+              -e 's/\x1b\[[0-9;]*m//g' \
+              /tmp/typescript
+            
+            # Show cleaned output (only if not empty)
+            if [ -s /tmp/typescript ]; then
+              cat /tmp/typescript
+            fi
             
             if grep -q '"Error":\s*{' /tmp/typescript || grep -q 'ERROR:' /tmp/typescript; then
               echo "❌ Error detected in command output"
