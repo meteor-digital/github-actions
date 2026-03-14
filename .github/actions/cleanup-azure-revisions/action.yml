@@ -29,10 +29,9 @@ runs:
         INACTIVE_REVISIONS=$(az containerapp revision list \
           --name "$APP_NAME" \
           --resource-group "$RESOURCE_GROUP" \
-          --query "[?properties.active==\`false\`].{name:name,created:properties.createdTime}" \
-          --output tsv \
-          | sort -k2 \
-          | cut -f1)
+          --all \
+          --query "sort_by([?properties.active==\`false\`], &properties.createdTime)[].name" \
+          --output tsv)
         
         # Count inactive revisions
         if [ -z "$INACTIVE_REVISIONS" ]; then

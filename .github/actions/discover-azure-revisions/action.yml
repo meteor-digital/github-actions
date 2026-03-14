@@ -31,7 +31,7 @@ runs:
 
         # Get the latest (newest) revision — this is the one just deployed by Bicep (inactive)
         NEW_REVISION=$(az containerapp revision list \
-          --name "$APP" -g "$RG" \
+          --name "$APP" -g "$RG" --all \
           --query "sort_by(@, &properties.createdTime)[-1].name" -o tsv)
 
         # Get the revision that was active before this deployment.
@@ -45,7 +45,7 @@ runs:
         if [ -z "$OLD_REVISION" ] || [ "$OLD_REVISION" = "None" ]; then
           # Fallback: traffic uses latestRevision=true, so get second-newest revision
           OLD_REVISION=$(az containerapp revision list \
-            --name "$APP" -g "$RG" \
+            --name "$APP" -g "$RG" --all \
             --query "sort_by(@, &properties.createdTime)[-2].name" -o tsv)
         fi
 
