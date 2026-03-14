@@ -118,13 +118,6 @@ runs:
         commands: ${{ steps.config.outputs.maintenance_disable_cmd }}
         description: 'maintenance mode (disable)'
 
-    - name: Cleanup old revisions
-      uses: meteor-digital/github-actions/.github/actions/cleanup-azure-revisions@main
-      with:
-        app_name: ${{ inputs.app_name }}
-        resource_group: ${{ inputs.resource_group }}
-        keep_revisions: '3'
-
     - name: Set deployment result
       id: deployment_result
       if: always()
