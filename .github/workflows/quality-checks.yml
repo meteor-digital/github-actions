@@ -52,7 +52,7 @@ jobs:
 
       - name: Parse pipeline configuration
         id: pipeline_config
-        uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@main
+        uses: meteor-digital/github-actions/.github/actions/parse-pipeline-config@install-plugins-for-integration-tests
         with:
           config_file: ${{ inputs.config_path }}
 
