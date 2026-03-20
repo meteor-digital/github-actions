@@ -401,6 +401,8 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpunit') && inputs.run_slow_testsuites == true
+    env:
+      DATABASE_URL: 'mysql://root:shopware@127.0.0.1:3306/shopware'
     services:
       mysql:
         image: mysql:8.0
@@ -444,16 +446,18 @@ jobs:
             echo "    -> Found Shopware version: $SW_VERSION"
 
             # Handle DATABASE_URL based on version
+            # Shopware >= 6.5 automatically appends '_test' to the DB name in test env,
+            # so we must NOT add it ourselves. Older versions need it explicitly.
             if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
-              echo "    -> Using DATABASE_URL without '_test' suffix for older Shopware version."
-              DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware'
-            else
-              echo "    -> Using DATABASE_URL with '_test' suffix."
+              echo "    -> Shopware < 6.5: Using DATABASE_URL with '_test' suffix."
               DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware_test'
+            else
+              echo "    -> Shopware >= 6.5: Using DATABASE_URL without '_test' suffix (auto-appended by Shopware)."
+              DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware'
             fi
             
             # Write to .env.local (for system:install, migrations, plugin install)
-            echo "DATABASE_URL=$DB_URL" >> .env.local
+            echo "DATABASE_URL=$DB_URL" > .env.local
             # Write to .env.test.local (for PHPUnit)
             echo "DATABASE_URL=$DB_URL" >> .env.test.local
 
