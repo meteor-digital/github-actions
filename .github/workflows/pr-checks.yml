@@ -7,6 +7,10 @@ on:
         description: 'Path to pipeline configuration file'
         type: string
         default: '.github/pipeline-config.yml'
+      run_slow_testsuites:
+        description: 'Run integration and component tests'
+        type: boolean
+        default: false
     secrets:
       composer_auth:
         description: 'Composer authentication JSON'
@@ -24,6 +28,6 @@ jobs:
     with:
       config_path: ${{ inputs.config_path }}
       check_changed_files_only: true
-      run_slow_testsuites: false
+      run_slow_testsuites: ${{ inputs.run_slow_testsuites }}
     secrets:
       composer_auth: ${{ secrets.composer_auth }}
