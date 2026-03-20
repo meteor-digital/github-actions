@@ -446,11 +446,16 @@ jobs:
             # Handle DATABASE_URL based on version
             if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
               echo "    -> Using DATABASE_URL without '_test' suffix for older Shopware version."
-              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware' >> .env.test.local
+              DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware'
             else
               echo "    -> Using DATABASE_URL with '_test' suffix."
-              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
+              DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware_test'
             fi
+            
+            # Write to .env.local (for system:install, migrations, plugin install)
+            echo "DATABASE_URL=$DB_URL" >> .env.local
+            # Write to .env.test.local (for PHPUnit)
+            echo "DATABASE_URL=$DB_URL" >> .env.test.local
 
             # Handle JWT key generation for Shopware < 6.7
             if [[ $(printf "%s\n" "6.7.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.7.0.0" ]]; then
