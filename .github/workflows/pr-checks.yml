@@ -15,6 +15,9 @@ on:
       composer_auth:
         description: 'Composer authentication JSON'
         required: true
+      test_env_vars:
+        description: 'Additional environment variables for testing (multiline KEY=value pairs)'
+        required: false
 
 # Prevent multiple PR checks from running simultaneously for the same PR
 concurrency:
@@ -31,3 +34,4 @@ jobs:
       run_slow_testsuites: ${{ inputs.run_slow_testsuites }}
     secrets:
       composer_auth: ${{ secrets.composer_auth }}
+      test_env_vars: ${{ secrets.test_env_vars }}
