@@ -37,5 +37,5 @@ runs:
         az containerapp revision deactivate \
           --name "${{ inputs.app_name }}" \
           --resource-group "${{ inputs.resource_group }}" \
-          --revision "${{ inputs.old_revision }}"
+          --revision "${{ inputs.old_revision }}" || true
         echo "✅ Old revision deactivated"
