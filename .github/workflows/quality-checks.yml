@@ -401,8 +401,6 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     if: contains(fromJson(needs.setup.outputs.enabled_tools), 'phpunit') && inputs.run_slow_testsuites == true
-    env:
-      DATABASE_URL: 'mysql://root:shopware@127.0.0.1:3306/shopware'
     services:
       mysql:
         image: mysql:8.0
