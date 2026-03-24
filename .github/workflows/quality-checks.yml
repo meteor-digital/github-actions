@@ -444,14 +444,12 @@ jobs:
             echo "    -> Found Shopware version: $SW_VERSION"
 
             # Handle DATABASE_URL based on version
-            # Shopware >= 6.5 automatically appends '_test' to the DB name in test env,
-            # so we must NOT add it ourselves. Older versions need it explicitly.
             if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
-              echo "    -> Shopware < 6.5: Using DATABASE_URL with '_test' suffix."
-              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
+              echo "    -> Using DATABASE_URL without '_test' suffix for older Shopware version."
+              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware' > .env.test.local
             else
-              echo "    -> Shopware >= 6.5: Using DATABASE_URL without '_test' suffix (auto-appended by Shopware)."
-              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware' >> .env.test.local
+              echo "    -> Using DATABASE_URL with '_test' suffix."
+              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' > .env.test.local
             fi
 
             # Handle JWT key generation for Shopware < 6.7
