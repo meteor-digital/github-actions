@@ -474,7 +474,7 @@ jobs:
             TEST_PLUGINS="${{ needs.setup.outputs.test_plugins }}"
 
             echo "    -> Installing Shopware..."
-            php bin/console system:install --basic-setup --drop-database --create-database --force --no-assign-theme --quiet
+            php bin/console system:install --basic-setup --create-database --force --no-assign-theme --quiet
 
             echo "    -> Running migrations..."
             php bin/console database:migrate --all "$PROJECT_NAME" --quiet
