@@ -180,6 +180,21 @@
                 ["CUSTOM_API_KEY=\"${secrets.CUSTOM_API_KEY}\""],
                 ["TEST_DATABASE_URL=\"sqlite:///:memory:\""]
               ]
+            },
+            "plugins": {
+              "type": "array",
+              "description": "List of plugin names to install and activate in the test environment database. The workflow handles system:install, migrations, and plugin install/activate automatically for Shopware projects.",
+              "items": {
+                "type": "string"
+              },
+              "examples": [
+                [
+                  "KplngiProductOrder",
+                  "MeteorStorelocator",
+                  "CarolineBissConfig",
+                  "SwagCustomizedProducts"
+                ]
+              ]
             }
           },
           "additionalProperties": false

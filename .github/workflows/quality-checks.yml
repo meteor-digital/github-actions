@@ -42,6 +42,7 @@ jobs:
       rector_bin: ${{ steps.pipeline_config.outputs.rector_bin }}
       phpunit_bin: ${{ steps.pipeline_config.outputs.phpunit_bin }}
       phpunuhi_bin: ${{ steps.pipeline_config.outputs.phpunuhi_bin }}
+      test_plugins: ${{ steps.pipeline_config.outputs.test_plugins }}
 
     steps:
       - name: Checkout code
@@ -405,6 +406,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: shopware
+          MYSQL_DATABASE: shopware_test
           MYSQL_USER: shopware
           MYSQL_PASSWORD: shopware
         ports:
@@ -442,14 +444,8 @@ jobs:
             SW_VERSION=$(composer show shopware/core | grep '^versions' | awk '{print $NF}' | sed 's/v//' | tr -d '[:space:]')
             echo "    -> Found Shopware version: $SW_VERSION"
 
-            # Handle DATABASE_URL based on version
-            if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
-              echo "    -> Using DATABASE_URL without '_test' suffix for older Shopware version."
-              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware' >> .env.test.local
-            else
-              echo "    -> Using DATABASE_URL with '_test' suffix."
-              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
-            fi
+            echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' > .env.local
+            echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' > .env.test.local
 
             # Handle JWT key generation for Shopware < 6.7
             if [[ $(printf "%s\n" "6.7.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.7.0.0" ]]; then
@@ -457,6 +453,28 @@ jobs:
               php bin/console system:generate-jwt-secret --force
             else
               echo "    -> Skipping JWT key generation for Shopware $SW_VERSION."
+            fi
+
+            # Install Shopware, run migrations, and activate plugins against the test database
+            PROJECT_NAME="${{ needs.setup.outputs.project_name }}"
+            TEST_PLUGINS="${{ needs.setup.outputs.test_plugins }}"
+
+            echo "    -> Installing Shopware..."
+            php bin/console system:install --basic-setup --create-database --force --no-assign-theme --quiet
+
+            echo "    -> Running migrations on test database..."
+            php bin/console database:migrate --all "$PROJECT_NAME" --quiet
+
+            if [ -n "$TEST_PLUGINS" ]; then
+              echo "    -> Refreshing plugins..."
+              php bin/console plugin:refresh --quiet
+
+              while IFS= read -r plugin; do
+                if [ -n "$plugin" ]; then
+                  echo "    -> Installing plugin: $plugin"
+                  php bin/console plugin:install "$plugin" --activate --quiet
+                fi
+              done <<< "$TEST_PLUGINS"
             fi
           fi
 

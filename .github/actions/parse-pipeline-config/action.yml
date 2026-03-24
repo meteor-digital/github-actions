@@ -62,6 +62,9 @@ outputs:
   phpunuhi_bin:
     description: 'PHPUnuhi binary path'
     value: ${{ steps.parse_ci.outputs.phpunuhi_bin }}
+  test_plugins:
+    description: 'Plugins to install and activate in the test environment'
+    value: ${{ steps.parse_ci.outputs.test_plugins }}
   
   # Deployment Configuration outputs
   host:
@@ -260,6 +263,9 @@ runs:
         [ -z "$PHPUNIT_BIN" ] && PHPUNIT_BIN="$DEFAULT_PHPUNIT"
         [ -z "$PHPUNUHI_BIN" ] && PHPUNUHI_BIN="$DEFAULT_PHPUNUHI"
         
+        # Parse test environment plugins
+        TEST_PLUGINS=$(yq eval -r '.quality_checks.test_environment.plugins[]' "$CONFIG_FILE" 2>/dev/null || echo "")
+
         # Set outputs
         echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
         echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
@@ -279,6 +285,9 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
         echo "exclude_patterns<<EOF" >> $GITHUB_OUTPUT
         echo "$EXCLUDE_PATTERNS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "test_plugins<<EOF" >> $GITHUB_OUTPUT
+        echo "$TEST_PLUGINS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
     - name: '🏗️ Load framework defaults'

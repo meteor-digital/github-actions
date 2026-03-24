@@ -7,10 +7,17 @@ on:
         description: 'Path to pipeline configuration file'
         type: string
         default: '.github/pipeline-config.yml'
+      run_slow_testsuites:
+        description: 'Run integration and component tests'
+        type: boolean
+        default: false
     secrets:
       composer_auth:
         description: 'Composer authentication JSON'
         required: true
+      test_env_vars:
+        description: 'Additional environment variables for testing (multiline KEY=value pairs)'
+        required: false
 
 # Prevent multiple PR checks from running simultaneously for the same PR
 concurrency:
@@ -24,6 +31,7 @@ jobs:
     with:
       config_path: ${{ inputs.config_path }}
       check_changed_files_only: true
-      run_slow_testsuites: false
+      run_slow_testsuites: ${{ inputs.run_slow_testsuites }}
     secrets:
       composer_auth: ${{ secrets.composer_auth }}
+      test_env_vars: ${{ secrets.test_env_vars }}
