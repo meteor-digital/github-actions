@@ -450,16 +450,11 @@ jobs:
             # so we must NOT add it ourselves. Older versions need it explicitly.
             if [[ $(printf "%s\n" "6.5.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.5.0.0" ]]; then
               echo "    -> Shopware < 6.5: Using DATABASE_URL with '_test' suffix."
-              DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware_test'
+              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware_test' >> .env.test.local
             else
               echo "    -> Shopware >= 6.5: Using DATABASE_URL without '_test' suffix (auto-appended by Shopware)."
-              DB_URL='mysql://root:shopware@127.0.0.1:3306/shopware'
+              echo 'DATABASE_URL=mysql://root:shopware@127.0.0.1:3306/shopware' >> .env.test.local
             fi
-            
-            # Write to .env.local (for system:install, migrations, plugin install)
-            echo "DATABASE_URL=$DB_URL" > .env.local
-            # Write to .env.test.local (for PHPUnit)
-            echo "DATABASE_URL=$DB_URL" >> .env.test.local
 
             # Handle JWT key generation for Shopware < 6.7
             if [[ $(printf "%s\n" "6.7.0.0" "$SW_VERSION" | sort -V | head -n1) == "$SW_VERSION" ]] && [[ "$SW_VERSION" != "6.7.0.0" ]]; then
@@ -469,24 +464,24 @@ jobs:
               echo "    -> Skipping JWT key generation for Shopware $SW_VERSION."
             fi
 
-            # Install Shopware, run migrations, and activate plugins
+            # Install Shopware, run migrations, and activate plugins against the test database
             PROJECT_NAME="${{ needs.setup.outputs.project_name }}"
             TEST_PLUGINS="${{ needs.setup.outputs.test_plugins }}"
 
             echo "    -> Installing Shopware..."
-            php bin/console system:install --basic-setup --create-database --force --no-assign-theme --quiet
+            APP_ENV=test php bin/console system:install --basic-setup --create-database --force --no-assign-theme --quiet
 
-            echo "    -> Running migrations..."
-            php bin/console database:migrate --all "$PROJECT_NAME" --quiet
+            echo "    -> Running migrations on test database..."
+            APP_ENV=test php bin/console database:migrate --all "$PROJECT_NAME" --quiet
 
             if [ -n "$TEST_PLUGINS" ]; then
               echo "    -> Refreshing plugins..."
-              php bin/console plugin:refresh --quiet
+              APP_ENV=test php bin/console plugin:refresh --quiet
 
               while IFS= read -r plugin; do
                 if [ -n "$plugin" ]; then
                   echo "    -> Installing plugin: $plugin"
-                  php bin/console plugin:install "$plugin" --activate --quiet
+                  APP_ENV=test php bin/console plugin:install "$plugin" --activate --quiet
                 fi
               done <<< "$TEST_PLUGINS"
             fi
